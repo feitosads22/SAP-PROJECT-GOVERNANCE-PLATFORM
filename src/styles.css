@@ -380,3 +380,14 @@ select {
 .fin--atencao { border-left: 4px solid var(--warn); }
 .fin--danger  { border-left: 4px solid var(--danger); }
 .fin--none    {}
+
+/* ── Modal wide ─────────────────────────────────────────────────── */
+.panel--wide { width: min(640px, 100vw); }
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+@media (max-width: 540px) { .modal-grid { grid-template-columns: 1fr; } }

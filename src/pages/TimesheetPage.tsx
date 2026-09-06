@@ -85,7 +85,6 @@ export default function TimesheetPage({ userId, role }: Props) {
 
     setSaving(true); setErro(null)
     const { error } = await createTimesheet({
-      organization_id: '',
       resource_id:  myResourceId,
       project_id:   projectId,
       task_id:      taskId || undefined,

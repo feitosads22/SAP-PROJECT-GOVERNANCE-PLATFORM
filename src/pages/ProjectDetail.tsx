@@ -76,7 +76,7 @@ export default function ProjectDetail({ role, userId }: Props) {
         <Link to={`/projeto/${project.id}/financeiro`} className="btn-fin-link">💰 Financeiro</Link>
       </div>
       <h2 className="section-title">Kanban de tarefas</h2>
-      <KanbanBoard projectId={project.id} role={role} userId={userId} />
+      <KanbanBoard projectId={project.id} organizationId={project.organization_id} role={role} userId={userId} />
     </div>
   )
 }

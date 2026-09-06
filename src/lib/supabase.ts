@@ -4,16 +4,19 @@ import type { Database } from '../types/database.types'
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!url || !anonKey) {
-  throw new Error(
-    'VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são obrigatórias. Ver .env.example.',
-  )
-}
+/**
+ * Falha de configuração não pode virar página branca: o build passa mesmo sem
+ * as variáveis (o bundler descarta o código morto depois de um throw no topo),
+ * e o erro só apareceria no console. Sinalizamos e a App mostra a instrução.
+ */
+export const configuracaoOk = Boolean(url && anonKey)
 
 // Apenas a anon key. A service_role nunca entra no frontend.
-export const supabase = createClient<Database>(url, anonKey, {
-  auth: { persistSession: true, autoRefreshToken: true },
-})
+export const supabase = createClient<Database>(
+  url || 'https://configuracao-ausente.invalid',
+  anonKey || 'configuracao-ausente',
+  { auth: { persistSession: true, autoRefreshToken: true } },
+)
 
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Project = Database['public']['Tables']['projects']['Row']

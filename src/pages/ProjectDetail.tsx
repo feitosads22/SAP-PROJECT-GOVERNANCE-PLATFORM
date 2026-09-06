@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getProject } from '../lib/api'
 import type { Project } from '../types/app.types'
 import KanbanBoard from '../components/KanbanBoard'
@@ -54,7 +54,10 @@ export default function ProjectDetail({ role, userId }: Props) {
             {project.sap_module ?? 'Sem módulo'} · {duration}
           </p>
         </div>
-        <div className="project-progress">
+        <div style={{ display:'flex', gap:'0.75rem', alignItems:'center' }}>
+        <button className="btn-sm" onClick={() => navigate(`/projeto/${project.id}/financeiro`)}>💰 Financeiro</button>
+      </div>
+      <div className="project-progress">
           <span className="project-progress__label">{project.progress}%</span>
           <div className="project-progress__bar">
             <div
@@ -69,6 +72,9 @@ export default function ProjectDetail({ role, userId }: Props) {
         <p className="project-desc">{project.description}</p>
       )}
 
+      <div style={{display:'flex',gap:'0.75rem',marginBottom:'0.5rem'}}>
+        <Link to={`/projeto/${project.id}/financeiro`} className="btn-fin-link">💰 Financeiro</Link>
+      </div>
       <h2 className="section-title">Kanban de tarefas</h2>
       <KanbanBoard projectId={project.id} role={role} userId={userId} />
     </div>

@@ -7,7 +7,8 @@ export default function NavBar() {
   const { pathname } = useLocation()
 
   const links = [
-    { to: '/',         label: 'Projetos' },
+    { to: '/portfolio', label: 'Portfolio' },
+    { to: '/',          label: 'Projetos' },
     { to: '/minhas',   label: 'Minhas tarefas' },
     { to: '/timesheet',  label: 'Timesheet' },
     { to: '/capacidade', label: 'Capacidade' },

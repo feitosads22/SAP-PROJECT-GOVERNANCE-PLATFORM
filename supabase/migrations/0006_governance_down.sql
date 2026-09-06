@@ -1,0 +1,14 @@
+begin;
+drop trigger if exists trg_change_requests_apply     on public.change_requests;
+drop trigger if exists trg_change_requests_updated_at on public.change_requests;
+drop trigger if exists trg_change_requests_org_id    on public.change_requests;
+drop trigger if exists trg_project_issues_updated_at on public.project_issues;
+drop trigger if exists trg_project_issues_org_id     on public.project_issues;
+drop trigger if exists trg_project_risks_updated_at  on public.project_risks;
+drop trigger if exists trg_project_risks_org_id      on public.project_risks;
+drop function if exists public.apply_change_request();
+drop table if exists public.change_requests cascade;
+drop table if exists public.project_issues  cascade;
+drop table if exists public.project_risks   cascade;
+drop sequence if exists public.cr_number_seq;
+commit;

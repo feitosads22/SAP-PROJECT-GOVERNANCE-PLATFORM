@@ -3,6 +3,7 @@ import {
   getTimesheets,
   createTimesheet,
   approveTimesheet,
+  rejectTimesheet,
   getMyResource,
 } from '../lib/resources'
 import { getProjects } from '../lib/api'
@@ -34,6 +35,8 @@ export default function TimesheetPage({ userId, role }: Props) {
   const [loadingTasks,  setLoadingTasks]  = useState(false)
   const [erro,          setErro]          = useState<string | null>(null)
   const [saving,        setSaving]        = useState(false)
+  const [rejMotivo,     setRejMotivo]     = useState<Record<string, string>>({})
+  const [rejecting,     setRejecting]     = useState<string | null>(null)
 
   // form
   const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10))
@@ -103,6 +106,16 @@ export default function TimesheetPage({ userId, role }: Props) {
     if (error) setErro(extractError(error))
     else void load()
   }
+  async function handleReject(ts: Timesheet) {
+    const motivo = rejMotivo[ts.id]?.trim()
+    if (!motivo) { setErro('Informe o motivo da reprovação.'); return }
+    setRejecting(ts.id)
+    const { error } = await rejectTimesheet(ts.id, userId, motivo)
+    setRejecting(null)
+    if (error) setErro(extractError(error))
+    else { setRejMotivo(p => { const n = {...p}; delete n[ts.id]; return n }); void load() }
+  }
+
 
   const totalHoras = timesheets.reduce((s, t) => s + Number(t.hours), 0)
 
@@ -230,11 +243,30 @@ export default function TimesheetPage({ userId, role }: Props) {
                 </td>
                 {canApprove && (
                   <td>
-                    {!aprovado && (
-                      <button className="btn-sm btn-sm--ok"
-                        onClick={() => handleApprove(ts)}>
-                        ✓ Aprovar
-                      </button>
+                    {!aprovado && !Boolean((ts as unknown as Record<string,unknown>)['rejected_by']) && (
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.35rem' }}>
+                        <button className="btn-sm btn-sm--ok"
+                          onClick={() => handleApprove(ts)}>
+                          ✓ Aprovar
+                        </button>
+                        <div style={{ display:'flex', gap:'0.35rem' }}>
+                          <input
+                            placeholder="Motivo"
+                            value={rejMotivo[ts.id] ?? ''}
+                            onChange={e => setRejMotivo(p => ({ ...p, [ts.id]: e.target.value }))}
+                            style={{ fontSize:'0.75rem', padding:'0.25rem 0.4rem' }}
+                          />
+                          <button
+                            className="btn-sm btn-sm--danger"
+                            disabled={rejecting === ts.id || !rejMotivo[ts.id]?.trim()}
+                            onClick={() => handleReject(ts)}>
+                            ✗
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {Boolean((ts as unknown as Record<string,unknown>)['rejected_by']) && (
+                      <span className="badge badge--rejected">Reprovado</span>
                     )}
                   </td>
                 )}

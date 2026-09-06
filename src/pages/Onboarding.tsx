@@ -32,8 +32,7 @@ export default function Onboarding() {
   async function criar() {
     setErro(null)
     setEnviando(true)
-
-    const { error } = await supabase.rpc('create_organization', {
+  const { error } = await (supabase as any).rpc('create_organization', {
       p_name: nome,
       p_slug: slug,
       p_sap_client_number: clienteSap || null,

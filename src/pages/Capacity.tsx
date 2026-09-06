@@ -14,6 +14,18 @@ const SENIORITY: Record<string, string> = {
   senior: 'Sênior', especialista: 'Especialista',
 }
 
+
+function extractError(err: unknown): string {
+  if (!err) return 'Erro desconhecido.'
+  if (typeof err === 'string') return err
+  if (typeof err === 'object') {
+    const e = err as Record<string, unknown>
+    if (typeof e['message'] === 'string') return e['message']
+    if (typeof e['details'] === 'string') return e['details']
+  }
+  return 'Erro desconhecido.'
+}
+
 export default function Capacity() {
   const [rows, setRows] = useState<CapacityRow[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -21,7 +33,7 @@ export default function Capacity() {
 
   useEffect(() => {
     getCapacity().then(({ data, error }) => {
-      if (error) setErro(String(error))
+      if (error) setErro(extractError(error))
       else setRows((data ?? []) as CapacityRow[])
       setCarregando(false)
     })

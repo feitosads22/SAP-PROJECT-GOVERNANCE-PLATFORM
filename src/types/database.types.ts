@@ -1,13 +1,151 @@
-// Types do schema Supabase — introspecção de 0001_foundation + 0001b_hotfix.
-// Conferido campo a campo contra o schema real em 2026-09-05 23:53.
-// Regenerar via CLI: supabase gen types typescript --project-id <ref>
-// O frontend só consome estes types — nunca campos inventados.
+// Gerado por introspecção do schema em 2026-09-06 02:09.
+// Substituir por `supabase gen types typescript` assim que a CLI estiver disponível.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   public: {
     Tables: {
+      attachments: {
+        Row: {
+          id: string
+          organization_id: string
+          evidence_id: string | null
+          bucket: string
+          storage_path: string
+          file_name: string
+          file_size: number | null
+          mime_type: string | null
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          evidence_id?: string | null
+          bucket: string
+          storage_path: string
+          file_name: string
+          file_size?: number | null
+          mime_type?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          evidence_id?: string | null
+          bucket?: string
+          storage_path?: string
+          file_name?: string
+          file_size?: number | null
+          mime_type?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+      }
+      audit_logs: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string | null
+          action: string
+          entity_type: string
+          entity_id: string | null
+          old_value: Json | null
+          new_value: Json | null
+          ip_address: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id?: string | null
+          action: string
+          entity_type: string
+          entity_id?: string | null
+          old_value?: Json | null
+          new_value?: Json | null
+          ip_address?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string | null
+          action?: string
+          entity_type?: string
+          entity_id?: string | null
+          old_value?: Json | null
+          new_value?: Json | null
+          ip_address?: string | null
+          created_at?: string
+        }
+      }
+      evidence_template_fields: {
+        Row: {
+          id: string
+          organization_id: string
+          template_id: string
+          label: string
+          field_type: string
+          is_required: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          template_id: string
+          label: string
+          field_type: string
+          is_required?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          template_id?: string
+          label?: string
+          field_type?: string
+          is_required?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+      }
+      evidence_templates: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          description: string | null
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          description?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          description?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       milestones: {
         Row: {
           id: string
@@ -45,7 +183,44 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
+      }
+      notifications: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          type: string
+          title: string
+          body: string | null
+          entity_type: string | null
+          entity_id: string | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          type: string
+          title: string
+          body?: string | null
+          entity_type?: string | null
+          entity_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          body?: string | null
+          entity_type?: string | null
+          entity_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
       }
       organizations: {
         Row: {
@@ -72,7 +247,6 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       phases: {
         Row: {
@@ -117,7 +291,6 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -150,7 +323,6 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       project_modules: {
         Row: {
@@ -189,7 +361,6 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       projects: {
         Row: {
@@ -252,7 +423,6 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       task_dependencies: {
         Row: {
@@ -279,7 +449,97 @@ export type Database = {
           dependency_type?: string
           created_at?: string
         }
-        Relationships: []
+      }
+      task_evidence_values: {
+        Row: {
+          id: string
+          organization_id: string
+          evidence_id: string
+          field_id: string
+          value_text: string | null
+          value_number: number | null
+          value_date: string | null
+          value_boolean: boolean | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          evidence_id: string
+          field_id: string
+          value_text?: string | null
+          value_number?: number | null
+          value_date?: string | null
+          value_boolean?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          evidence_id?: string
+          field_id?: string
+          value_text?: string | null
+          value_number?: number | null
+          value_date?: string | null
+          value_boolean?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      task_evidences: {
+        Row: {
+          id: string
+          organization_id: string
+          task_id: string
+          template_id: string | null
+          title: string
+          description: string | null
+          status: string
+          submitted_by: string | null
+          submitted_at: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          rejection_reason: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          task_id: string
+          template_id?: string | null
+          title: string
+          description?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          rejection_reason?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          task_id?: string
+          template_id?: string | null
+          title?: string
+          description?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          rejection_reason?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
       }
       task_history: {
         Row: {
@@ -312,7 +572,6 @@ export type Database = {
           new_value?: string | null
           created_at?: string
         }
-        Relationships: []
       }
       tasks: {
         Row: {
@@ -387,7 +646,6 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       wbs_items: {
         Row: {
@@ -426,7 +684,6 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
     }
     Views: { [_ in never]: never }
@@ -439,7 +696,6 @@ export type Database = {
       current_role: { Args: Record<string, never>; Returns: string }
     }
     Enums: { [_ in never]: never }
-    CompositeTypes: { [_ in never]: never }
   }
 }
 

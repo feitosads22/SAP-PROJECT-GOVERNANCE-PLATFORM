@@ -1,4 +1,4 @@
-// Gerado por introspecção do schema em 2026-09-06 03:29.
+// Gerado por introspecção do schema em 2026-09-06 16:09.
 // Substituir por `supabase gen types typescript` assim que a CLI estiver disponível.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -322,6 +322,141 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+        }
+      }
+      project_budgets: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          budget_total: number
+          revenue_planned: number | null
+          cost_planned: number | null
+          contingency_pct: number | null
+          currency: string
+          approved_by: string | null
+          approved_at: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          budget_total: number
+          revenue_planned?: number | null
+          cost_planned?: number | null
+          contingency_pct?: number | null
+          currency?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          budget_total?: number
+          revenue_planned?: number | null
+          cost_planned?: number | null
+          contingency_pct?: number | null
+          currency?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      project_costs: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          category: string
+          description: string
+          amount: number
+          cost_date: string
+          approved_by: string | null
+          approved_at: string | null
+          receipt_path: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          category: string
+          description: string
+          amount: number
+          cost_date?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          receipt_path?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          category?: string
+          description?: string
+          amount?: number
+          cost_date?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          receipt_path?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      project_forecasts: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          forecast_date: string
+          cost_forecast: number
+          revenue_forecast: number | null
+          completion_pct: number | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          forecast_date?: string
+          cost_forecast: number
+          revenue_forecast?: number | null
+          completion_pct?: number | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          forecast_date?: string
+          cost_forecast?: number
+          revenue_forecast?: number | null
+          completion_pct?: number | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
         }
       }
       project_modules: {

@@ -9,6 +9,8 @@ export default function NavBar() {
   const links = [
     { to: '/',         label: 'Projetos' },
     { to: '/minhas',   label: 'Minhas tarefas' },
+    { to: '/timesheet',  label: 'Timesheet' },
+    { to: '/capacidade', label: 'Capacidade' },
   ]
 
   return (

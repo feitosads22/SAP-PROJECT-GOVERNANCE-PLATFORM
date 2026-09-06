@@ -336,3 +336,47 @@ select {
 @media (max-width: 640px) {
   .ts-form__grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Financial KPIs ──────────────────────────────────────────────── */
+.fin-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem; margin-bottom: 1.25rem;
+}
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.kpi-card__label { font-size: 0.75rem; color: var(--subtle); text-transform: uppercase; letter-spacing: .04em; }
+.kpi-card__val   { font-size: 1.25rem; font-weight: 700; }
+.kpi--ok     .kpi-card__val { color: var(--ok); }
+.kpi--danger .kpi-card__val { color: var(--danger); }
+
+.fin-bar-wrap { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.fin-bar { flex: 1; height: 10px; background: var(--bg); border-radius: 99px; overflow: hidden; }
+.fin-bar__fill { height: 100%; border-radius: 99px; transition: width 0.4s; }
+.fin-bar__fill--ok        { background: var(--ok); }
+.fin-bar__fill--atencao   { background: var(--warn); }
+.fin-bar__fill--estourado { background: var(--danger); }
+.fin-bar__fill--sem_orcamento { background: var(--subtle); }
+
+.fin-cols {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1.5rem; margin-bottom: 1.5rem;
+}
+@media (max-width: 768px) { .fin-cols { grid-template-columns: 1fr; } }
+
+.fin-section { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.fin-form {
+  background: var(--bg); border-radius: 8px;
+  padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem;
+}
+.fin-form__actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+
+/* status badge aliases */
+.fin--ok      { border-left: 4px solid var(--ok); }
+.fin--atencao { border-left: 4px solid var(--warn); }
+.fin--danger  { border-left: 4px solid var(--danger); }
+.fin--none    {}

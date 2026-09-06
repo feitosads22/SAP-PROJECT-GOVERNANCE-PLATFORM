@@ -2,48 +2,47 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getOrgProfiles } from '../lib/api'
 import type { Database } from '../types/database.types'
+import type { Project } from '../types/app.types'
 
 type Profile = { id: string; full_name: string | null; email: string | null; role: string }
 type Module  = { id: string; name: string; code: string }
 type Phase   = { id: string; name: string; code: string }
 
 type Props = {
-  projectId: string
+  projectId:      string
   organizationId: string
-  onCreated: () => void
-  onClose: () => void
+  projects?:      Project[]           // opcional: para MyTasks escolher o projeto
+  onCreated:      () => void
+  onClose:        () => void
 }
 
-const SAP_ACTIVATE_PHASES = [
-  'Descobrir','Preparar','Explorar','Realizar','Implementar','Executar',
-] as const
-
-const PRIORITIES = ['low','medium','high','critical'] as const
-const PRIORITY_LABEL: Record<string, string> = {
+const SAP_PHASES = ['Descobrir','Preparar','Explorar','Realizar','Implementar','Executar'] as const
+const PRIORITIES  = ['low','medium','high','critical'] as const
+const PRIO_LABEL: Record<string,string> = {
   low:'Baixa', medium:'Média', high:'Alta', critical:'Crítica',
 }
 
-function extractError(err: unknown): string {
-  if (!err) return 'Erro desconhecido.'
-  if (typeof err === 'string') return err
-  if (typeof err === 'object') {
-    const e = err as Record<string, unknown>
-    if (typeof e['message'] === 'string') return e['message']
-  }
-  return 'Erro desconhecido.'
+function err(e: unknown): string {
+  if (!e) return 'Erro.'
+  if (typeof e === 'string') return e
+  const r = e as Record<string, unknown>
+  return typeof r['message'] === 'string' ? r['message'] : 'Erro desconhecido.'
 }
 
-export default function CreateTaskModal({ projectId, organizationId, onCreated, onClose }: Props) {
+export default function CreateTaskModal({
+  projectId: initialProjectId, organizationId,
+  projects = [], onCreated, onClose,
+}: Props) {
   const [profiles,  setProfiles]  = useState<Profile[]>([])
   const [modules,   setModules]   = useState<Module[]>([])
   const [phases,    setPhases]    = useState<Phase[]>([])
   const [saving,    setSaving]    = useState(false)
   const [erro,      setErro]      = useState<string | null>(null)
 
-  // form fields
+  const [projectId,        setProjectId]        = useState(initialProjectId)
   const [title,            setTitle]            = useState('')
   const [description,      setDescription]      = useState('')
-  const [priority,         setPriority]         = useState<string>('medium')
+  const [priority,         setPriority]         = useState('medium')
   const [assigneeId,       setAssigneeId]       = useState('')
   const [reviewerId,       setReviewerId]       = useState('')
   const [moduleId,         setModuleId]         = useState('')
@@ -54,46 +53,55 @@ export default function CreateTaskModal({ projectId, organizationId, onCreated, 
   const [estimatedHours,   setEstimatedHours]   = useState('')
   const [requiresEvidence, setRequiresEvidence] = useState(false)
 
+  useEffect(() => { void loadProfiles() }, [])
+
   useEffect(() => {
-    Promise.all([
-      getOrgProfiles(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('project_modules').select('id,name,code').eq('project_id', projectId).order('sort_order'),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('phases').select('id,name,code').eq('project_id', projectId).order('sort_order'),
-    ]).then(([rProfiles, rModules, rPhases]) => {
-      if (!rProfiles.error) setProfiles(rProfiles.data ?? [])
-      if (!rModules.error)  setModules(rModules.data ?? [])
-      if (!rPhases.error)   setPhases(rPhases.data ?? [])
-    })
+    if (projectId) void loadProjectData(projectId)
+    else { setModules([]); setPhases([]) }
   }, [projectId])
+
+  async function loadProfiles() {
+    const { data } = await getOrgProfiles()
+    if (data) setProfiles(data as Profile[])
+  }
+
+  async function loadProjectData(pid: string) {
+    const [rM, rP] = await Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from('project_modules').select('id,name,code').eq('project_id', pid).order('sort_order'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from('phases').select('id,name,code').eq('project_id', pid).order('sort_order'),
+    ])
+    if (!rM.error) setModules(rM.data ?? [])
+    if (!rP.error) setPhases(rP.data ?? [])
+    setModuleId(''); setPhaseId('')
+  }
 
   async function handleCreate() {
     if (!title.trim()) { setErro('Título obrigatório.'); return }
+    if (!projectId)    { setErro('Selecione um projeto.'); return }
     setSaving(true); setErro(null)
 
     const payload: Database['public']['Tables']['tasks']['Insert'] = {
-      project_id:         projectId,
-      organization_id:    organizationId,
-      title:              title.trim(),
-      description:        description || undefined,
+      project_id: projectId, organization_id: organizationId,
+      title: title.trim(), description: description || undefined,
       priority,
-      assignee_id:        assigneeId  || undefined,
-      reviewer_id:        reviewerId  || undefined,
-      module_id:          moduleId    || undefined,
-      phase_id:           phaseId     || undefined,
-      sap_activate_phase: sapPhase    || undefined,
-      planned_start_date: startDate   || undefined,
-      planned_end_date:   endDate     || undefined,
+      assignee_id:        assigneeId      || undefined,
+      reviewer_id:        reviewerId      || undefined,
+      module_id:          moduleId        || undefined,
+      phase_id:           phaseId         || undefined,
+      sap_activate_phase: sapPhase        || undefined,
+      planned_start_date: startDate       || undefined,
+      planned_end_date:   endDate         || undefined,
       estimated_hours:    estimatedHours ? parseFloat(estimatedHours) : undefined,
       requires_evidence:  requiresEvidence,
-      status:             'todo',
+      status: 'todo',
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('tasks').insert(payload)
     setSaving(false)
-    if (error) { setErro(extractError(error)); return }
+    if (error) { setErro(err(error)); return }
     onCreated()
   }
 
@@ -103,24 +111,39 @@ export default function CreateTaskModal({ projectId, organizationId, onCreated, 
     <div className="panel-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <aside className="panel panel--wide">
         <header className="panel__header">
-          <h2 className="panel__title">Nova tarefa</h2>
+          <div>
+            <h2 className="panel__title">Nova tarefa</h2>
+            <p className="sutil">Preencha os campos e clique em criar</p>
+          </div>
           <button className="panel__close" onClick={onClose}>×</button>
         </header>
 
         <div className="panel__body">
           {erro && <p className="erro">{erro}</p>}
 
+          {/* Projeto — só quando vem de MyTasks */}
+          {projects.length > 0 && (
+            <>
+              <label>Projeto *</label>
+              <select value={projectId} onChange={e => setProjectId(e.target.value)}>
+                <option value="">Selecione…</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+              </select>
+            </>
+          )}
+
           <label>Título *</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Configurar plano de contas" />
+          <input value={title} onChange={e => setTitle(e.target.value)}
+            placeholder="Ex: Configurar plano de contas" />
 
           <label>Descrição</label>
-          <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} />
+          <textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} />
 
           <div className="modal-grid">
             <div>
               <label>Prioridade</label>
               <select value={priority} onChange={e => setPriority(e.target.value)}>
-                {PRIORITIES.map(p => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
+                {PRIORITIES.map(p => <option key={p} value={p}>{PRIO_LABEL[p]}</option>)}
               </select>
             </div>
 
@@ -128,13 +151,14 @@ export default function CreateTaskModal({ projectId, organizationId, onCreated, 
               <label>Fase SAP Activate</label>
               <select value={sapPhase} onChange={e => setSapPhase(e.target.value)}>
                 <option value="">— Nenhuma —</option>
-                {SAP_ACTIVATE_PHASES.map(f => <option key={f} value={f}>{f}</option>)}
+                {SAP_PHASES.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
 
             <div>
               <label>Módulo SAP</label>
-              <select value={moduleId} onChange={e => setModuleId(e.target.value)}>
+              <select value={moduleId} onChange={e => setModuleId(e.target.value)}
+                disabled={!projectId}>
                 <option value="">— Nenhum —</option>
                 {modules.map(m => <option key={m.id} value={m.id}>{m.code} — {m.name}</option>)}
               </select>
@@ -142,7 +166,8 @@ export default function CreateTaskModal({ projectId, organizationId, onCreated, 
 
             <div>
               <label>Fase do projeto</label>
-              <select value={phaseId} onChange={e => setPhaseId(e.target.value)}>
+              <select value={phaseId} onChange={e => setPhaseId(e.target.value)}
+                disabled={!projectId}>
                 <option value="">— Nenhuma —</option>
                 {phases.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
@@ -152,9 +177,7 @@ export default function CreateTaskModal({ projectId, organizationId, onCreated, 
               <label>Responsável</label>
               <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)}>
                 <option value="">— Nenhum —</option>
-                {consultants.map(p => (
-                  <option key={p.id} value={p.id}>{p.full_name ?? p.email}</option>
-                ))}
+                {consultants.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.email}</option>)}
               </select>
             </div>
 
@@ -162,9 +185,7 @@ export default function CreateTaskModal({ projectId, organizationId, onCreated, 
               <label>Revisor</label>
               <select value={reviewerId} onChange={e => setReviewerId(e.target.value)}>
                 <option value="">— Nenhum —</option>
-                {consultants.map(p => (
-                  <option key={p.id} value={p.id}>{p.full_name ?? p.email}</option>
-                ))}
+                {consultants.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.email}</option>)}
               </select>
             </div>
 
@@ -184,20 +205,18 @@ export default function CreateTaskModal({ projectId, organizationId, onCreated, 
                 onChange={e => setEstimatedHours(e.target.value)} placeholder="Ex: 40" />
             </div>
 
-            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', paddingTop:'1.5rem' }}>
-              <input
-                type="checkbox" id="req-ev"
-                checked={requiresEvidence}
+            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', paddingTop:'1.75rem' }}>
+              <input type="checkbox" id="req-ev" checked={requiresEvidence}
                 onChange={e => setRequiresEvidence(e.target.checked)}
-                style={{ width:'auto' }}
-              />
-              <label htmlFor="req-ev" style={{ margin:0, color:'var(--text)' }}>
+                style={{ width:'auto', display:'inline' }} />
+              <label htmlFor="req-ev" style={{ margin:0, textTransform:'none', fontSize:'0.875rem', fontWeight:500, color:'var(--text)', letterSpacing:0 }}>
                 Exige evidência para concluir
               </label>
             </div>
           </div>
 
-          <button onClick={handleCreate} disabled={saving || !title.trim()}>
+          <button onClick={handleCreate} disabled={saving || !title.trim() || !projectId}
+            style={{ marginTop:'0.5rem' }}>
             {saving ? 'Criando…' : 'Criar tarefa'}
           </button>
         </div>

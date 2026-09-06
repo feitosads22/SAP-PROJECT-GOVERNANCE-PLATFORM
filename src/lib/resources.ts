@@ -119,3 +119,17 @@ export async function getMyResource(profileId: string) {
     .eq('profile_id', profileId)
     .maybeSingle()
 }
+
+export async function rejectTimesheet(id: string, rejectedBy: string, reason: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any)
+    .from('timesheets')
+    .update({
+      rejected_by:      rejectedBy,
+      rejected_at:      new Date().toISOString(),
+      rejection_reason: reason,
+      approved_by:      null,
+      approved_at:      null,
+    })
+    .eq('id', id)
+}

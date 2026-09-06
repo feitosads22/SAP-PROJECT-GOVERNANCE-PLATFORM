@@ -1,4 +1,4 @@
-// Gerado por introspecção do schema em 2026-09-06 16:30.
+// Gerado por introspecção do schema em 2026-09-06 17:08.
 // Substituir por `supabase gen types typescript` assim que a CLI estiver disponível.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -80,6 +80,68 @@ export type Database = {
           new_value?: Json | null
           ip_address?: string | null
           created_at?: string
+        }
+      }
+      change_requests: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          number: number
+          title: string
+          description: string | null
+          justification: string | null
+          additional_hours: number
+          additional_cost: number
+          schedule_impact_days: number
+          scope_impact: string | null
+          requested_by: string | null
+          approved_by: string | null
+          approved_at: string | null
+          status: string
+          rejection_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          number?: number
+          title: string
+          description?: string | null
+          justification?: string | null
+          additional_hours?: number
+          additional_cost?: number
+          schedule_impact_days?: number
+          scope_impact?: string | null
+          requested_by?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          status?: string
+          rejection_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          number?: number
+          title?: string
+          description?: string | null
+          justification?: string | null
+          additional_hours?: number
+          additional_cost?: number
+          schedule_impact_days?: number
+          scope_impact?: string | null
+          requested_by?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          status?: string
+          rejection_reason?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
       evidence_template_fields: {
@@ -459,6 +521,59 @@ export type Database = {
           created_at?: string
         }
       }
+      project_issues: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          title: string
+          description: string | null
+          priority: string
+          impact: string | null
+          owner_id: string | null
+          due_date: string | null
+          status: string
+          resolution: string | null
+          resolved_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          title: string
+          description?: string | null
+          priority?: string
+          impact?: string | null
+          owner_id?: string | null
+          due_date?: string | null
+          status?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          title?: string
+          description?: string | null
+          priority?: string
+          impact?: string | null
+          owner_id?: string | null
+          due_date?: string | null
+          status?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       project_modules: {
         Row: {
           id: string
@@ -493,6 +608,65 @@ export type Database = {
           sap_module?: string | null
           description?: string | null
           sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      project_risks: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          title: string
+          description: string | null
+          category: string | null
+          probability: string
+          impact: string
+          score: number | null
+          owner_id: string | null
+          due_date: string | null
+          mitigation_plan: string | null
+          contingency_plan: string | null
+          status: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          title: string
+          description?: string | null
+          category?: string | null
+          probability?: string
+          impact?: string
+          score?: number | null
+          owner_id?: string | null
+          due_date?: string | null
+          mitigation_plan?: string | null
+          contingency_plan?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          title?: string
+          description?: string | null
+          category?: string | null
+          probability?: string
+          impact?: string
+          score?: number | null
+          owner_id?: string | null
+          due_date?: string | null
+          mitigation_plan?: string | null
+          contingency_plan?: string | null
+          status?: string
+          created_by?: string | null
           created_at?: string
           updated_at?: string
         }

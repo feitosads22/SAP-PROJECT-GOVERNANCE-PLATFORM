@@ -6,34 +6,36 @@ import {
   getMyResource,
 } from '../lib/resources'
 import { getProjects } from '../lib/api'
+import { getTasksByProject } from '../lib/api'
 import type { Timesheet } from '../lib/resources'
-import type { Project } from '../types/app.types'
+import type { Project, Task } from '../types/app.types'
 
 type Props = { userId: string; role: string }
 
 export default function TimesheetPage({ userId, role }: Props) {
-  const [timesheets, setTimesheets] = useState<Timesheet[]>([])
-  const [projects,   setProjects]   = useState<Project[]>([])
-  const [myResourceId, setMyResourceId] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro]   = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [timesheets,    setTimesheets]    = useState<Timesheet[]>([])
+  const [projects,      setProjects]      = useState<Project[]>([])
+  const [tasks,         setTasks]         = useState<Task[]>([])
+  const [myResourceId,  setMyResourceId]  = useState<string | null>(null)
+  const [carregando,    setCarregando]    = useState(true)
+  const [loadingTasks,  setLoadingTasks]  = useState(false)
+  const [erro,          setErro]          = useState<string | null>(null)
+  const [saving,        setSaving]        = useState(false)
 
   // form
   const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10))
   const [hours,       setHours]       = useState('')
   const [projectId,   setProjectId]   = useState('')
+  const [taskId,      setTaskId]      = useState('')
   const [description, setDescription] = useState('')
 
-  const canApprove  = role === 'admin' || role === 'manager'
-  const canLaunch   = role === 'admin' || role === 'manager' || role === 'consultant'
+  const canApprove = role === 'admin' || role === 'manager'
+  const canLaunch  = role === 'admin' || role === 'manager' || role === 'consultant'
 
   async function load() {
     setCarregando(true)
     const [resTs, resPrj, resR] = await Promise.all([
-      getTimesheets(
-        canApprove ? {} : { resourceId: myResourceId ?? undefined }
-      ),
+      getTimesheets(canApprove ? {} : { resourceId: myResourceId ?? undefined }),
       getProjects(),
       getMyResource(userId),
     ])
@@ -47,24 +49,40 @@ export default function TimesheetPage({ userId, role }: Props) {
 
   useEffect(() => { void load() }, [userId])
 
+  // Carregar tarefas quando o projeto muda
+  async function handleProjectChange(pid: string) {
+    setProjectId(pid)
+    setTaskId('')
+    setTasks([])
+    if (!pid) return
+    setLoadingTasks(true)
+    const { data, error } = await getTasksByProject(pid)
+    if (!error) setTasks((data ?? []) as unknown as Task[])
+    setLoadingTasks(false)
+  }
+
   async function handleCreate() {
-    if (!myResourceId) { setErro('Seu perfil não tem um recurso cadastrado. Peça ao administrador.'); return }
+    if (!myResourceId) {
+      setErro('Seu perfil não tem um recurso cadastrado. Peça ao administrador.')
+      return
+    }
     if (!projectId || !hours || !date) { setErro('Preencha data, projeto e horas.'); return }
     const h = parseFloat(hours)
     if (isNaN(h) || h <= 0 || h > 24) { setErro('Horas deve ser entre 0.5 e 24.'); return }
 
     setSaving(true); setErro(null)
     const { error } = await createTimesheet({
-      organization_id: '', // preenchido pelo trigger set_org_id
-      resource_id: myResourceId,
-      project_id: projectId,
+      organization_id: '',
+      resource_id:  myResourceId,
+      project_id:   projectId,
+      task_id:      taskId || undefined,
       date,
       hours: h,
       description: description || undefined,
     })
     setSaving(false)
     if (error) { setErro(String(error)); return }
-    setHours(''); setDescription('')
+    setHours(''); setDescription(''); setTaskId('')
     void load()
   }
 
@@ -76,6 +94,11 @@ export default function TimesheetPage({ userId, role }: Props) {
 
   const totalHoras = timesheets.reduce((s, t) => s + Number(t.hours), 0)
 
+  // Tarefas ativas (excluir concluídas/canceladas) para o combo
+  const activeTasks = tasks.filter(
+    t => t.status !== 'completed' && t.status !== 'cancelled'
+  )
+
   return (
     <div className="pagina">
       <header className="topo">
@@ -85,43 +108,76 @@ export default function TimesheetPage({ userId, role }: Props) {
         </div>
       </header>
 
-      {/* Formulário de lançamento */}
       {canLaunch && (
         <div className="ts-form">
           <h2 className="section-title">Lançar horas</h2>
           <div className="ts-form__grid">
+
             <div>
-              <label>Data</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} max={new Date().toISOString().slice(0,10)} />
+              <label htmlFor="ts-date">Data</label>
+              <input
+                id="ts-date" type="date" value={date}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={e => setDate(e.target.value)}
+              />
             </div>
+
             <div>
-              <label>Projeto</label>
-              <select value={projectId} onChange={e => setProjectId(e.target.value)}>
+              <label htmlFor="ts-project">Projeto</label>
+              <select
+                id="ts-project" value={projectId}
+                onChange={e => handleProjectChange(e.target.value)}
+              >
                 <option value="">Selecione…</option>
                 {projects.map(p => (
                   <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
                 ))}
               </select>
             </div>
+
             <div>
-              <label>Horas</label>
-              <input type="number" min="0.5" max="24" step="0.5" value={hours}
-                onChange={e => setHours(e.target.value)} placeholder="Ex: 4" />
+              <label htmlFor="ts-task">
+                Tarefa {loadingTasks ? '(carregando…)' : '(opcional)'}
+              </label>
+              <select
+                id="ts-task" value={taskId}
+                disabled={!projectId || loadingTasks}
+                onChange={e => setTaskId(e.target.value)}
+              >
+                <option value="">— Geral / sem tarefa —</option>
+                {activeTasks.map(t => (
+                  <option key={t.id} value={t.id}>{t.title}</option>
+                ))}
+              </select>
             </div>
+
+            <div>
+              <label htmlFor="ts-hours">Horas</label>
+              <input
+                id="ts-hours" type="number"
+                min="0.5" max="24" step="0.5" value={hours}
+                placeholder="Ex: 4"
+                onChange={e => setHours(e.target.value)}
+              />
+            </div>
+
             <div className="ts-form__desc">
-              <label>Descrição</label>
-              <input value={description} onChange={e => setDescription(e.target.value)}
-                placeholder="O que foi feito?" />
+              <label htmlFor="ts-desc">Descrição</label>
+              <input
+                id="ts-desc" value={description}
+                placeholder="O que foi feito?"
+                onChange={e => setDescription(e.target.value)}
+              />
             </div>
+
           </div>
           {erro && <p className="erro">{erro}</p>}
-          <button onClick={handleCreate} disabled={saving}>
+          <button onClick={handleCreate} disabled={saving || !projectId || !hours || !date}>
             {saving ? 'Salvando…' : 'Lançar horas'}
           </button>
         </div>
       )}
 
-      {/* Lista */}
       {carregando && <p className="sutil">Carregando…</p>}
       {!carregando && timesheets.length === 0 && (
         <p className="sutil">Nenhum lançamento encontrado.</p>
@@ -133,6 +189,7 @@ export default function TimesheetPage({ userId, role }: Props) {
             <th>Data</th>
             <th>Consultor</th>
             <th>Projeto</th>
+            <th>Tarefa</th>
             <th>Horas</th>
             <th>Descrição</th>
             <th>Status</th>
@@ -141,15 +198,17 @@ export default function TimesheetPage({ userId, role }: Props) {
         </thead>
         <tbody>
           {timesheets.map(ts => {
-            const row = ts as unknown as Record<string, unknown>
+            const row      = ts as unknown as Record<string, unknown>
             const resource = row['resource'] as { profile: { full_name: string | null } } | null
             const project  = row['project']  as { code: string } | null
+            const task     = row['task']     as { title: string } | null
             const aprovado = ts.approved_by !== null
             return (
               <tr key={ts.id}>
                 <td>{new Date(ts.date).toLocaleDateString('pt-BR')}</td>
                 <td>{resource?.profile?.full_name ?? '—'}</td>
                 <td>{project?.code ?? '—'}</td>
+                <td>{task?.title ?? <span className="sutil">—</span>}</td>
                 <td><strong>{ts.hours}h</strong></td>
                 <td>{ts.description ?? '—'}</td>
                 <td>

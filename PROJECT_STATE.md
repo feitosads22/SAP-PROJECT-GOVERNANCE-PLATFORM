@@ -1,3 +1,23 @@
+## ✅ FASE 1A — CONCLUÍDA (06/09/2026)
+
+**Implementado:** Auth, organizações (multi-tenant), projetos, módulos SAP, WBS, fases, milestones, tarefas, dependências, histórico de tarefas.
+
+**Banco:** 10 tabelas, 36 policies, 2 migrations aplicadas no Supabase real (`0001_foundation` + `0001b_hotfix`). Hotfix fecha escalonamento de privilégio via `profiles` e troca de tenant — falhas confirmadas e corrigidas com output real.
+
+**Segurança:** RLS 21/21 PASS no Supabase real. Isolamento entre organizações confirmado pela tela em produção: `manager.b@beta.test` vê somente `BETA-UPG`.
+
+**Frontend:** React + TypeScript + Vite. `tsc --strict` limpo. `vite build` passou. Deploy na Vercel: https://sap-project-governance-platform-ca4.vercel.app
+
+**GitHub:** https://github.com/feitosads22/SAP-PROJECT-GOVERNANCE-PLATFORM
+
+**Pendências conhecidas para fases futuras:**
+- `customer` vê todos os projetos da org (filtro projeto–cliente vai para a Fase 7)
+- Migration 0001 sem script de rollback
+- `current_role()` colide com função reservada do Postgres — renomear para `current_app_role()` numa migration futura
+- Types TypeScript gerados por introspecção; substituir por `supabase gen types` quando CLI disponível
+
+---
+
 # PROJECT_STATE.md
 
 **Plataforma:** SAP Project Governance Platform (multi-tenant)

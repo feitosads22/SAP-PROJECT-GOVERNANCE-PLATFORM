@@ -239,3 +239,29 @@ button.link { background: none; color: var(--accent); padding: 0.35rem; }
 .bell__item { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; padding: 0.65rem 1rem; border-top: 1px solid var(--border); }
 .bell__item-title { font-size: 0.875rem; font-weight: 600; margin: 0 0 0.2rem; }
 .bell__item-body  { font-size: 0.8125rem; color: var(--subtle); margin: 0; }
+
+/* ── Upload area ─────────────────────────────────────────────────── */
+.upload-area {
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 1.25rem; text-align: center; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+}
+.upload-area:hover, .upload-area--drag {
+  border-color: var(--accent); background: #eff6ff;
+}
+.upload-area__icon { font-size: 1.5rem; margin: 0; }
+.upload-area__label { font-size: 0.875rem; font-weight: 600; margin: 0; }
+
+/* ── Attachment list ─────────────────────────────────────────────── */
+.attach-list { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem; }
+.attach-item {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.7rem;
+  font-size: 0.8125rem; color: var(--text); text-align: left;
+  cursor: pointer; width: 100%;
+}
+.attach-item:hover { background: #eff6ff; border-color: var(--accent); }
+.attach-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attach-meta { color: var(--subtle); font-size: 0.75rem; white-space: nowrap; }

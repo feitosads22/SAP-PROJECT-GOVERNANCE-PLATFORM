@@ -1,4 +1,4 @@
-// Gerado por introspecção do schema em 2026-09-06 16:09.
+// Gerado por introspecção do schema em 2026-09-06 16:30.
 // Substituir por `supabase gen types typescript` assim que a CLI estiver disponível.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -808,6 +808,7 @@ export type Database = {
           created_by: string | null
           created_at: string
           updated_at: string
+          sap_activate_phase: string | null
         }
         Insert: {
           id?: string
@@ -832,6 +833,7 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          sap_activate_phase?: string | null
         }
         Update: {
           id?: string
@@ -856,6 +858,7 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          sap_activate_phase?: string | null
         }
       }
       timesheets: {
@@ -872,6 +875,9 @@ export type Database = {
           approved_at: string | null
           created_at: string
           updated_at: string
+          rejected_by: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
         }
         Insert: {
           id?: string
@@ -886,6 +892,9 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           updated_at?: string
+          rejected_by?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
         }
         Update: {
           id?: string
@@ -900,6 +909,9 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           updated_at?: string
+          rejected_by?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
         }
       }
       wbs_items: {

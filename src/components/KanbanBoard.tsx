@@ -15,8 +15,9 @@ import { getTasksByProject, updateTaskStatus } from '../lib/api'
 import type { Task, TaskStatus } from '../types/app.types'
 import { KANBAN_COLUMNS, TASK_STATUS_LABEL, PRIORITY_COLOR, PRIORITY_LABEL } from '../types/app.types'
 import EvidencePanel from './EvidencePanel'
+import CreateTaskModal from './CreateTaskModal'
 
-type Props = { projectId: string; role: string; userId: string }
+type Props = { projectId: string; organizationId: string; role: string; userId: string }
 type ColumnMap = Record<TaskStatus, Task[]>
 
 function buildColumns(tasks: Task[]): ColumnMap {
@@ -60,6 +61,9 @@ function TaskCard({
           </span>
         )}
         {task.requires_evidence && <span className="badge badge--ev">Evidência</span>}
+        {String((task as unknown as Record<string, unknown>)['sap_activate_phase'] ?? '') && (
+          <span className="badge">{String((task as unknown as Record<string, unknown>)['sap_activate_phase'])}</span>
+        )}
         <span className="badge">{task.progress}%</span>
       </div>
     </div>
@@ -92,10 +96,11 @@ function KanbanColumn({
 }
 
 // ── Board ─────────────────────────────────────────────────────────────
-export default function KanbanBoard({ projectId, role, userId }: Props) {
+export default function KanbanBoard({ projectId, organizationId, role, userId }: Props) {
   const [columns, setColumns]       = useState<ColumnMap>(buildColumns([]))
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
   const [erro, setErro]             = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
 
@@ -185,6 +190,25 @@ export default function KanbanBoard({ projectId, role, userId }: Props) {
           {activeTask && <TaskCard task={activeTask} overlay />}
         </DragOverlay>
       </DndContext>
+
+      {(role === 'admin' || role === 'manager') && (
+        <button
+          className="btn-sm"
+          style={{ marginTop:'0.75rem' }}
+          onClick={() => setShowCreate(true)}
+        >
+          + Nova tarefa
+        </button>
+      )}
+
+      {showCreate && (
+        <CreateTaskModal
+          projectId={projectId}
+          organizationId={organizationId}
+          onCreated={() => { setShowCreate(false); void load() }}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
 
       {selectedTask && (
         <EvidencePanel

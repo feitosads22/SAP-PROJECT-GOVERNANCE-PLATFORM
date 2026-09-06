@@ -10,6 +10,19 @@ import { getTasksByProject } from '../lib/api'
 import type { Timesheet } from '../lib/resources'
 import type { Project, Task } from '../types/app.types'
 
+
+function extractError(err: unknown): string {
+  if (!err) return 'Erro desconhecido.'
+  if (typeof err === 'string') return err
+  if (typeof err === 'object') {
+    const e = err as Record<string, unknown>
+    if (typeof e['message'] === 'string') return e['message']
+    if (typeof e['details'] === 'string') return e['details']
+    if (typeof e['hint']    === 'string') return e['hint']
+  }
+  return 'Erro desconhecido.'
+}
+
 type Props = { userId: string; role: string }
 
 export default function TimesheetPage({ userId, role }: Props) {
@@ -39,7 +52,7 @@ export default function TimesheetPage({ userId, role }: Props) {
       getProjects(),
       getMyResource(userId),
     ])
-    if (resTs.error) setErro(String(resTs.error))
+    if (resTs.error) setErro(extractError(resTs.error))
     else setTimesheets((resTs.data ?? []) as Timesheet[])
     if (!resPrj.error) setProjects(resPrj.data ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,14 +94,14 @@ export default function TimesheetPage({ userId, role }: Props) {
       description: description || undefined,
     })
     setSaving(false)
-    if (error) { setErro(String(error)); return }
+    if (error) { setErro(extractError(error)); return }
     setHours(''); setDescription(''); setTaskId('')
     void load()
   }
 
   async function handleApprove(ts: Timesheet) {
     const { error } = await approveTimesheet(ts.id, userId)
-    if (error) setErro(String(error))
+    if (error) setErro(extractError(error))
     else void load()
   }
 

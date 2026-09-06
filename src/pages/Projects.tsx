@@ -1,111 +1,64 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import type { Project, Organization } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
+import { Link } from 'react-router-dom'
+import { getProjects } from '../lib/api'
+import type { Project } from '../types/app.types'
 
-const STATUS: Record<string, string> = {
-  draft: 'Rascunho',
-  active: 'Ativo',
-  on_hold: 'Em espera',
-  completed: 'Concluído',
-  cancelled: 'Cancelado',
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'Rascunho', active: 'Ativo', on_hold: 'Em espera',
+  completed: 'Concluído', cancelled: 'Cancelado',
 }
-
-const PRIORIDADE: Record<string, string> = {
-  low: 'Baixa',
-  medium: 'Média',
-  high: 'Alta',
-  critical: 'Crítica',
+const STATUS_COLOR: Record<string, string> = {
+  draft: '#94a3b8', active: '#22c55e', on_hold: '#f59e0b',
+  completed: '#3b82f6', cancelled: '#ef4444',
 }
 
 export default function Projects() {
-  const { profile, signOut } = useAuth()
-  const [projetos, setProjetos] = useState<Project[]>([])
-  const [org, setOrg] = useState<Organization | null>(null)
+  const [projects, setProjects] = useState<Project[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  // Nenhum filtro por organization_id no cliente: quem filtra é a RLS.
-  // Se a policy falhar, o vazamento aparece aqui — é intencional.
   useEffect(() => {
-    let ativo = true
-
-    async function carregar() {
-      const [resProjetos, resOrg] = await Promise.all([
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('organizations').select('*').maybeSingle(),
-      ])
-
-      if (!ativo) return
-
-      if (resProjetos.error) setErro(resProjetos.error.message)
-      else setProjetos(resProjetos.data)
-
-      if (!resOrg.error) setOrg(resOrg.data)
+    getProjects().then(({ data, error }) => {
+      if (error) setErro(error.message)
+      else setProjects(data ?? [])
       setCarregando(false)
-    }
-
-    void carregar()
-    return () => {
-      ativo = false
-    }
+    })
   }, [])
-
-  const podeCriar = profile?.role === 'admin' || profile?.role === 'manager'
 
   return (
     <div className="pagina">
       <header className="topo">
-        <div>
-          <h1>Projetos</h1>
-          <p className="sutil">
-            {org?.name ?? 'Organização'} · {profile?.full_name ?? profile?.email} ·{' '}
-            <strong>{profile?.role}</strong>
-          </p>
-        </div>
-        <button className="link" onClick={signOut}>
-          Sair
-        </button>
+        <h1>Projetos</h1>
       </header>
-
       {erro && <p className="erro">{erro}</p>}
       {carregando && <p className="sutil">Carregando…</p>}
-
-      {!carregando && projetos.length === 0 && (
+      {!carregando && projects.length === 0 && (
         <p className="sutil">Nenhum projeto nesta organização.</p>
       )}
-
-      <table className="tabela">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Nome</th>
-            <th>Módulo SAP</th>
-            <th>Status</th>
-            <th>Prioridade</th>
-            <th>Progresso</th>
-          </tr>
-        </thead>
-        <tbody>
-          {projetos.map((p) => (
-            <tr key={p.id}>
-              <td>{p.code}</td>
-              <td>{p.name}</td>
-              <td>{p.sap_module ?? '—'}</td>
-              <td>{STATUS[p.status] ?? p.status}</td>
-              <td>{PRIORIDADE[p.priority] ?? p.priority}</td>
-              <td>{p.progress}%</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {!podeCriar && !carregando && (
-        <p className="sutil">
-          Seu perfil não cria projetos. A restrição está na policy do banco, não nesta
-          tela — esconder o botão é conveniência, não segurança.
-        </p>
-      )}
+      <div className="project-grid">
+        {projects.map(p => (
+          <Link key={p.id} to={`/projeto/${p.id}`} className="pcard">
+            <div className="pcard__top">
+              <span className="pcard__code">{p.code}</span>
+              <span
+                className="pcard__status"
+                style={{ background: STATUS_COLOR[p.status] ?? '#94a3b8' }}
+              >
+                {STATUS_LABEL[p.status] ?? p.status}
+              </span>
+            </div>
+            <h2 className="pcard__name">{p.name}</h2>
+            {p.description && <p className="pcard__desc">{p.description}</p>}
+            <div className="pcard__bar-wrap">
+              <div className="pcard__bar">
+                <div className="pcard__bar-fill" style={{ width: `${p.progress}%` }} />
+              </div>
+              <span className="pcard__pct">{p.progress}%</span>
+            </div>
+            {p.sap_module && <p className="sutil pcard__module">{p.sap_module}</p>}
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }

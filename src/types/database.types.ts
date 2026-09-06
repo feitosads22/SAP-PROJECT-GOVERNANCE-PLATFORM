@@ -21,7 +21,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           evidence_id?: string | null
           bucket: string
           storage_path: string
@@ -59,7 +59,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           user_id?: string | null
           action: string
           entity_type: string
@@ -95,7 +95,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           template_id: string
           label: string
           field_type: string
@@ -127,7 +127,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           name: string
           description?: string | null
           is_active?: boolean
@@ -199,7 +199,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           user_id: string
           type: string
           title: string
@@ -439,7 +439,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           resource_id: string
           project_id: string
           role_in_project?: string | null
@@ -477,7 +477,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           profile_id: string
           sap_modules?: string[]
           seniority?: string
@@ -541,7 +541,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           evidence_id: string
           field_id: string
           value_text?: string | null
@@ -584,7 +584,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           task_id: string
           template_id?: string | null
           title: string
@@ -740,7 +740,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id: string
+          organization_id?: string
           resource_id: string
           project_id: string
           task_id?: string | null

@@ -9,6 +9,7 @@ import MyTasks from './pages/MyTasks'
 import Capacity from './pages/Capacity'
 import TimesheetPage from './pages/TimesheetPage'
 import BudgetPage from './pages/BudgetPage'
+import GovernancePage from './pages/GovernancePage'
 import NavBar from './components/NavBar'
 
 function ErroConfiguracao() {
@@ -47,9 +48,11 @@ function App() {
         <Route path="/projeto/:id"   element={<ProjectDetail role={role} userId={userId} />} />
         <Route path="/minhas"        element={<MyTasks role={role} userId={userId} />} />
         <Route path="/capacidade"     element={<Capacity />} />
-        <Route path="/projeto/:id/financeiro" element={<BudgetPage role={role} userId={userId} />} />
+        <Route path="/projeto/:id/financeiro"   element={<BudgetPage role={role} userId={userId} />} />
+        <Route path="/projeto/:id/governanca"  element={<GovernancePage role={role} userId={userId} />} />
         <Route path="/timesheet"      element={<TimesheetPage role={role} userId={userId} />} />
-        <Route path="/projeto/:id/financeiro" element={<BudgetPage role={role} userId={userId} />} />
+        <Route path="/projeto/:id/financeiro"   element={<BudgetPage role={role} userId={userId} />} />
+        <Route path="/projeto/:id/governanca"  element={<GovernancePage role={role} userId={userId} />} />
         <Route path="*"              element={<Navigate to="/" replace />} />
       </Routes>
     </>

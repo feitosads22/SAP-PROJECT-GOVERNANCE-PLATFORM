@@ -1,8 +1,12 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { configuracaoOk } from './lib/supabase'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Projects from './pages/Projects'
+import ProjectDetail from './pages/ProjectDetail'
+import MyTasks from './pages/MyTasks'
+import NavBar from './components/NavBar'
 
 function ErroConfiguracao() {
   return (
@@ -22,19 +26,36 @@ function ErroConfiguracao() {
   )
 }
 
-function Rotas() {
+function App() {
   const { session, profile, loading } = useAuth()
+
   if (loading) return <div className="tela-centro"><p className="sutil">Carregando…</p></div>
   if (!session) return <Login />
   if (!profile || profile.organization_id === null) return <Onboarding />
-  return <Projects />
+
+  const role    = profile.role
+  const userId  = profile.id
+
+  return (
+    <>
+      <NavBar />
+      <Routes>
+        <Route path="/"              element={<Projects />} />
+        <Route path="/projeto/:id"   element={<ProjectDetail role={role} userId={userId} />} />
+        <Route path="/minhas"        element={<MyTasks role={role} userId={userId} />} />
+        <Route path="*"              element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
+  )
 }
 
-export default function App() {
+export default function Root() {
   if (!configuracaoOk) return <ErroConfiguracao />
   return (
-    <AuthProvider>
-      <Rotas />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
   )
 }

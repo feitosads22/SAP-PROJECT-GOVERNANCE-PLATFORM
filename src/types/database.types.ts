@@ -1,4 +1,4 @@
-// Gerado por introspecção do schema em 2026-09-06 02:09.
+// Gerado por introspecção do schema em 2026-09-06 03:29.
 // Substituir por `supabase gen types typescript` assim que a CLI estiver disponível.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -424,6 +424,82 @@ export type Database = {
           updated_at?: string
         }
       }
+      resource_allocations: {
+        Row: {
+          id: string
+          organization_id: string
+          resource_id: string
+          project_id: string
+          role_in_project: string | null
+          allocated_hours: number
+          start_date: string | null
+          end_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          resource_id: string
+          project_id: string
+          role_in_project?: string | null
+          allocated_hours: number
+          start_date?: string | null
+          end_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          resource_id?: string
+          project_id?: string
+          role_in_project?: string | null
+          allocated_hours?: number
+          start_date?: string | null
+          end_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      resources: {
+        Row: {
+          id: string
+          organization_id: string
+          profile_id: string
+          sap_modules: string[]
+          seniority: string
+          hourly_rate: number | null
+          weekly_capacity_hours: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          profile_id: string
+          sap_modules?: string[]
+          seniority?: string
+          hourly_rate?: number | null
+          weekly_capacity_hours?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          profile_id?: string
+          sap_modules?: string[]
+          seniority?: string
+          hourly_rate?: number | null
+          weekly_capacity_hours?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
       task_dependencies: {
         Row: {
           id: string
@@ -647,6 +723,50 @@ export type Database = {
           updated_at?: string
         }
       }
+      timesheets: {
+        Row: {
+          id: string
+          organization_id: string
+          resource_id: string
+          project_id: string
+          task_id: string | null
+          date: string
+          hours: number
+          description: string | null
+          approved_by: string | null
+          approved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          resource_id: string
+          project_id: string
+          task_id?: string | null
+          date: string
+          hours: number
+          description?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          resource_id?: string
+          project_id?: string
+          task_id?: string | null
+          date?: string
+          hours?: number
+          description?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       wbs_items: {
         Row: {
           id: string
@@ -701,4 +821,3 @@ export type Database = {
 
 export type Tables<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Row']
-

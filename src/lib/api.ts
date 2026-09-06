@@ -126,3 +126,56 @@ export async function getOrgProfiles() {
     .select('id, full_name, email, role')
     .not('organization_id', 'is', null)
 }
+
+// ── Storage — upload de evidência ─────────────────────────────────────
+export async function uploadEvidenceFile(
+  orgId: string,
+  projectId: string,
+  taskId: string,
+  file: File,
+): Promise<{ path: string; publicUrl: string } | { error: string }> {
+  // path: {org_id}/{project_id}/{task_id}/{timestamp}_{filename}
+
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path = `${orgId}/${projectId}/${taskId}/${Date.now()}_${safe}`
+
+  const { error } = await supabase.storage
+    .from('task-evidence')
+    .upload(path, file, { upsert: false, contentType: file.type })
+
+  if (error) return { error: error.message }
+
+  const { data } = supabase.storage
+    .from('task-evidence')
+    .getPublicUrl(path)
+
+  return { path, publicUrl: data.publicUrl }
+}
+
+export async function getEvidenceFileUrl(path: string): Promise<string> {
+  const { data } = await supabase.storage
+    .from('task-evidence')
+    .createSignedUrl(path, 3600) // 1 hora
+  return data?.signedUrl ?? ''
+}
+
+export async function saveAttachment(data: {
+  organization_id: string
+  evidence_id: string
+  storage_path: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  uploaded_by: string
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase.from('attachments') as any).insert(data)
+}
+
+export async function getAttachmentsByEvidence(evidenceId: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase.from('attachments') as any)
+    .select('*')
+    .eq('evidence_id', evidenceId)
+    .order('created_at', { ascending: false })
+}

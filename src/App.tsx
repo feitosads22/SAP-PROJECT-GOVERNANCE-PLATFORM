@@ -14,9 +14,8 @@ function ErroConfiguracao() {
           <code>VITE_SUPABASE_ANON_KEY</code> não chegaram ao build.
         </p>
         <p className="sutil">
-          Na Vercel: Settings → Environment Variables, marcando Production,
-          Preview e Development. Variável nova só vale no próximo deploy —
-          é preciso refazer o Redeploy depois de cadastrar.
+          Vercel → Settings → Environment Variables → cadastre as duas →
+          Deployments → Redeploy.
         </p>
       </div>
     </div>
@@ -25,10 +24,8 @@ function ErroConfiguracao() {
 
 function Rotas() {
   const { session, profile, loading } = useAuth()
-
   if (loading) return <div className="tela-centro"><p className="sutil">Carregando…</p></div>
   if (!session) return <Login />
-  // Sem organização: só o onboarding. A porta real é a RLS, esta é a navegação.
   if (!profile || profile.organization_id === null) return <Onboarding />
   return <Projects />
 }

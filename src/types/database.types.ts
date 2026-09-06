@@ -1,4 +1,4 @@
-// Gerado por introspecção do schema em 2026-09-06 17:08.
+// Gerado por introspecção do schema em 2026-09-06 22:28.
 // Substituir por `supabase gen types typescript` assim que a CLI estiver disponível.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -519,6 +519,47 @@ export type Database = {
           notes?: string | null
           created_by?: string | null
           created_at?: string
+        }
+      }
+      project_health_scores: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          score: number
+          score_prazo: number | null
+          score_budget: number | null
+          score_riscos: number | null
+          score_issues: number | null
+          score_evidencias: number | null
+          status: string
+          calculated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          project_id: string
+          score: number
+          score_prazo?: number | null
+          score_budget?: number | null
+          score_riscos?: number | null
+          score_issues?: number | null
+          score_evidencias?: number | null
+          status: string
+          calculated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          score?: number
+          score_prazo?: number | null
+          score_budget?: number | null
+          score_riscos?: number | null
+          score_issues?: number | null
+          score_evidencias?: number | null
+          status?: string
+          calculated_at?: string
         }
       }
       project_issues: {

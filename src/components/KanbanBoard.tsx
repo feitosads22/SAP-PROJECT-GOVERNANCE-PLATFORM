@@ -3,6 +3,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -16,7 +17,6 @@ import { KANBAN_COLUMNS, TASK_STATUS_LABEL, PRIORITY_COLOR, PRIORITY_LABEL } fro
 import EvidencePanel from './EvidencePanel'
 
 type Props = { projectId: string; role: string; userId: string }
-
 type ColumnMap = Record<TaskStatus, Task[]>
 
 function buildColumns(tasks: Task[]): ColumnMap {
@@ -28,25 +28,14 @@ function buildColumns(tasks: Task[]): ColumnMap {
   return cols
 }
 
-// ── Card arrastável ──────────────────────────────────────────────────
+// ── Card ─────────────────────────────────────────────────────────────
 function TaskCard({
-  task,
-  onClick,
-  overlay = false,
-}: {
-  task: Task
-  onClick?: () => void
-  overlay?: boolean
-}) {
+  task, onClick, overlay = false,
+}: { task: Task; onClick?: () => void; overlay?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  }
-
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   const prio = task.priority as keyof typeof PRIORITY_COLOR
   const overdue =
     task.planned_end_date && task.status !== 'completed' && task.status !== 'cancelled'
@@ -77,28 +66,25 @@ function TaskCard({
   )
 }
 
-// ── Coluna ───────────────────────────────────────────────────────────
+// ── Coluna droppable ──────────────────────────────────────────────────
+// Usa useDroppable com id = status para que over.id seja o status.
 function KanbanColumn({
-  status,
-  tasks,
-  onCardClick,
-}: {
-  status: TaskStatus
-  tasks: Task[]
-  onCardClick: (t: Task) => void
-}) {
+  status, tasks, onCardClick,
+}: { status: TaskStatus; tasks: Task[]; onCardClick: (t: Task) => void }) {
+  const { setNodeRef, isOver } = useDroppable({ id: status })
+
   return (
-    <div className="kcol">
+    <div className={`kcol${isOver ? ' kcol--over' : ''}`}>
       <div className="kcol__header">
         <span>{TASK_STATUS_LABEL[status]}</span>
         <span className="kcol__count">{tasks.length}</span>
       </div>
       <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="kcol__body">
+        <div ref={setNodeRef} className="kcol__body">
           {tasks.map(t => (
             <TaskCard key={t.id} task={t} onClick={() => onCardClick(t)} />
           ))}
-          {tasks.length === 0 && <p className="kcol__empty">Sem tarefas</p>}
+          {tasks.length === 0 && <p className="kcol__empty">Solte aqui</p>}
         </div>
       </SortableContext>
     </div>
@@ -107,12 +93,11 @@ function KanbanColumn({
 
 // ── Board ─────────────────────────────────────────────────────────────
 export default function KanbanBoard({ projectId, role, userId }: Props) {
-  const [columns, setColumns] = useState<ColumnMap>(buildColumns([]))
+  const [columns, setColumns]       = useState<ColumnMap>(buildColumns([]))
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
+  const [erro, setErro]             = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
-
 
   const load = useCallback(async () => {
     setCarregando(true)
@@ -138,15 +123,19 @@ export default function KanbanBoard({ projectId, role, userId }: Props) {
 
   async function handleDragEnd({ active, over }: DragEndEvent) {
     setActiveTask(null)
-    if (!over || active.id === over.id) return
+    if (!over) return
 
     const task = findTask(String(active.id))
     if (!task) return
 
-    // Verifica se o destino é o id de uma coluna (status) ou de uma tarefa
-    const targetStatus = KANBAN_COLUMNS.includes(over.id as TaskStatus)
-      ? (over.id as TaskStatus)
-      : findTask(String(over.id))?.status as TaskStatus | undefined
+    // over.id pode ser um status (coluna droppable) ou um task id
+    let targetStatus: TaskStatus | undefined
+    if (KANBAN_COLUMNS.includes(over.id as TaskStatus)) {
+      targetStatus = over.id as TaskStatus
+    } else {
+      // caiu sobre um card — usa o status desse card
+      targetStatus = findTask(String(over.id))?.status as TaskStatus | undefined
+    }
 
     if (!targetStatus || targetStatus === task.status) return
 
@@ -154,16 +143,17 @@ export default function KanbanBoard({ projectId, role, userId }: Props) {
     setColumns(prev => {
       const next = { ...prev }
       next[task.status as TaskStatus] = next[task.status as TaskStatus].filter(t => t.id !== task.id)
-      next[targetStatus] = [{ ...task, status: targetStatus }, ...next[targetStatus]]
+      next[targetStatus!] = [{ ...task, status: targetStatus! }, ...next[targetStatus!]]
       return next
     })
 
     const { error } = await updateTaskStatus(task.id, targetStatus)
     if (error) {
+      const msg = error.message ?? ''
       setErro(
-        error.message.includes('EVIDENCE_REQUIRED')
+        msg.includes('EVIDENCE_REQUIRED') || msg.includes('P0001')
           ? 'Esta tarefa exige evidência aprovada para ser concluída.'
-          : error.message,
+          : msg || 'Erro ao mover a tarefa.',
       )
       void load() // reverte
     }
@@ -175,7 +165,7 @@ export default function KanbanBoard({ projectId, role, userId }: Props) {
     <div className="kanban-wrap">
       {erro && (
         <div className="kanban-erro">
-          {erro}
+          <span>{erro}</span>
           <button className="link" onClick={() => setErro(null)}>×</button>
         </div>
       )}
@@ -187,7 +177,7 @@ export default function KanbanBoard({ projectId, role, userId }: Props) {
               key={status}
               status={status}
               tasks={columns[status]}
-              onCardClick={setSelectedTask}
+              onCardClick={t => { setErro(null); setSelectedTask(t) }}
             />
           ))}
         </div>

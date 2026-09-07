@@ -86,10 +86,10 @@ export default function CustomerPortalPage() {
 
   useEffect(() => { void load() }, [])
 
-  if (loading) return <div className="pagina"><p className="sutil">Carregando portal…</p></div>
+  if (loading) return <div className="page"><p className="sutil">Carregando portal…</p></div>
 
   if (projects.length === 0) return (
-    <div className="pagina">
+    <div className="page">
       <div className="page-header"><div className="page-header__left"><h1>Portal do Cliente</h1></div></div>
       <div style={{ textAlign:'center', padding:'4rem 1rem' }}>
         <p style={{ fontSize:'3rem' }}>📋</p>
@@ -102,7 +102,7 @@ export default function CustomerPortalPage() {
   )
 
   return (
-    <div className="pagina">
+    <div className="page">
       <div className="page-header">
         <div className="page-header__left">
           <h1>Portal do Cliente</h1>

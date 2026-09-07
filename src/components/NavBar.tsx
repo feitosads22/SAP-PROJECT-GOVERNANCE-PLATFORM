@@ -14,6 +14,7 @@ export default function NavBar() {
       ]
     : [
         { to: '/portfolio',  label: 'Portfolio' },
+        { to: '/knowledge',  label: '🤖 IA' },
         { to: '/',           label: 'Projetos' },
         { to: '/minhas',     label: 'Minhas tarefas' },
         { to: '/timesheet',  label: 'Timesheet' },

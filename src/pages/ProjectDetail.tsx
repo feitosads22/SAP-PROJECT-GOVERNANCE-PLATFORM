@@ -71,6 +71,11 @@ export default function ProjectDetail({ role, userId }: Props) {
           <button className="btn-outline" onClick={() => navigate(`/projeto/${project.id}/governanca`)}>
             🛡️ Governança
           </button>
+          {(role === 'admin' || role === 'manager') && (
+            <button className="btn-outline" onClick={() => navigate(`/projeto/${project.id}/clientes`)}>
+              👥 Clientes
+            </button>
+          )}
           <div className="project-progress">
             <span className="project-progress__label">{project.progress}%</span>
             <div className="project-progress__bar">

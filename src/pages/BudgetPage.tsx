@@ -10,7 +10,7 @@ import { getProject } from '../lib/api'
 import type { FinancialRow, ProjectBudget, ProjectCost, ProjectForecast } from '../lib/financial'
 import type { Project } from '../types/app.types'
 
-type Props = { role: string; userId: string }
+type Props = { role: string; userId: string; overrideProjectId?: string }
 
 const STATUS_CFG = {
   ok:           { label: 'Dentro do orçamento', icon: '🟢', cls: 'fin--ok'       },
@@ -44,8 +44,9 @@ function extractError(err: unknown): string {
   return 'Erro desconhecido.'
 }
 
-export default function BudgetPage({ role, userId }: Props) {
-  const { id: projectId } = useParams<{ id: string }>()
+export default function BudgetPage({ role, userId, overrideProjectId }: Props) {
+  const params = useParams<{ id: string }>()
+  const projectId = overrideProjectId ?? params.id
   const navigate = useNavigate()
 
   const [project,  setProject]  = useState<Project | null>(null)
@@ -164,12 +165,12 @@ export default function BudgetPage({ role, userId }: Props) {
     else { setFcCost(''); setFcRevenue(''); setFcNotes(''); void load() }
   }
 
-  if (loading) return <div className="pagina"><p className="sutil">Carregando…</p></div>
+  if (loading) return <div className="page"><p className="sutil">Carregando…</p></div>
 
   const cfg = STATUS_CFG[fin?.financial_status ?? 'sem_orcamento']
 
   return (
-    <div className="pagina">
+    <div className="page">
       <header className="topo">
         <div>
           <button className="link" onClick={() => navigate(`/projeto/${projectId}`)}>← Kanban</button>

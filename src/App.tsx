@@ -4,30 +4,30 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { configuracaoOk } from './lib/supabase'
 import AppSidebar from './components/AppSidebar'
 import AppTopbar  from './components/AppTopbar'
-import Login        from './pages/Login'
-import Onboarding   from './pages/Onboarding'
-import Dashboard    from './pages/Dashboard'
-import Projects     from './pages/Projects'
-import ProjectDetail from './pages/ProjectDetail'
-import MyTasks      from './pages/MyTasks'
-import Capacity     from './pages/Capacity'
-import TimesheetPage   from './pages/TimesheetPage'
-import BudgetPage      from './pages/BudgetPage'
-import GovernancePage  from './pages/GovernancePage'
-import PortfolioPage   from './pages/PortfolioPage'
+import Login             from './pages/Login'
+import Onboarding        from './pages/Onboarding'
+import Dashboard         from './pages/Dashboard'
+import Projects          from './pages/Projects'
+import ProjectDetail     from './pages/ProjectDetail'
+import MyTasks           from './pages/MyTasks'
+import Capacity          from './pages/Capacity'
+import TimesheetPage     from './pages/TimesheetPage'
+import BudgetPage        from './pages/BudgetPage'
+import GovernancePage    from './pages/GovernancePage'
+import PortfolioPage     from './pages/PortfolioPage'
 import CustomerPortalPage  from './pages/CustomerPortalPage'
 import CustomerManagePage  from './pages/CustomerManagePage'
-import KnowledgePage   from './pages/KnowledgePage'
+import KnowledgePage     from './pages/KnowledgePage'
+import DemandsPage       from './pages/DemandsPage'
+import DocumentsPage     from './pages/DocumentsPage'
+import ReportsPage       from './pages/ReportsPage'
 
 function ErroConfiguracao() {
   return (
     <div className="tela-centro">
       <div className="cartao">
         <h1>Configuração ausente</h1>
-        <p className="sutil">
-          Variáveis <code>VITE_SUPABASE_URL</code> e{' '}
-          <code>VITE_SUPABASE_ANON_KEY</code> não encontradas.
-        </p>
+        <p className="sutil">Configure <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code>.</p>
       </div>
     </div>
   )
@@ -38,9 +38,7 @@ function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   if (loading) return (
-    <div className="tela-centro">
-      <p className="sutil">Carregando…</p>
-    </div>
+    <div className="tela-centro"><p className="sutil">Carregando…</p></div>
   )
   if (!session)  return <Login />
   if (!profile || profile.organization_id === null) return <Onboarding />
@@ -50,10 +48,7 @@ function AppLayout() {
 
   return (
     <div className="app-layout">
-      <AppSidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-content">
         <AppTopbar onMenuToggle={() => setSidebarOpen(o => !o)} />
         <Routes>
@@ -69,6 +64,9 @@ function AppLayout() {
           <Route path="/portal-cliente"         element={<CustomerPortalPage />} />
           <Route path="/projeto/:id/clientes"   element={<CustomerManagePage role={role} userId={userId} />} />
           <Route path="/knowledge"              element={<KnowledgePage role={role} userId={userId} />} />
+          <Route path="/demandas"               element={<DemandsPage />} />
+          <Route path="/documentos"             element={<DocumentsPage />} />
+          <Route path="/relatorios"             element={<ReportsPage />} />
           <Route path="*"                       element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>

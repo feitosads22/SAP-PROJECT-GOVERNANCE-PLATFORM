@@ -40,10 +40,11 @@ export default function MyTasks({ userId, role }: Props) {
   const overdue = tasks.filter(t => t.planned_end_date && new Date(t.planned_end_date) < new Date())
 
   return (
-    <div className="pagina">
+    <div className="page">
       <div className="page-header">
         <div className="page-header__left">
-          <h1>Minhas tarefas</h1>
+          <div className="page-header__eyebrow">Execução</div>
+          <h1>Minhas Tarefas</h1>
           <p className="sutil">
             {tasks.length} ativa{tasks.length !== 1 ? 's' : ''}
             {overdue.length > 0 && (

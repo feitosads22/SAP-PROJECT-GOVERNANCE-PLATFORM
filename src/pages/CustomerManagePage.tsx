@@ -14,7 +14,7 @@ type Update = {
 }
 type Profile= { id: string; full_name: string | null; email: string | null; role: string }
 
-type Props = { role: string; userId: string }
+type Props = { role: string; userId: string; overrideProjectId?: string }
 
 const UPDATE_TYPES = ['general','milestone','risk','financial','schedule'] as const
 const UPDATE_TYPE_LABEL: Record<string,string> = {
@@ -28,8 +28,9 @@ function err(e: unknown): string {
   return typeof r['message'] === 'string' ? r['message'] : 'Erro.'
 }
 
-export default function CustomerManagePage({ role, userId }: Props) {
-  const { id: projectId } = useParams<{ id: string }>()
+export default function CustomerManagePage({ role, userId, overrideProjectId }: Props) {
+  const params = useParams<{ id: string }>()
+  const projectId = overrideProjectId ?? params.id
   const navigate = useNavigate()
   const canEdit  = role === 'admin' || role === 'manager'
 
@@ -123,7 +124,7 @@ export default function CustomerManagePage({ role, userId }: Props) {
   const available = customers.filter(c => !linkedIds.has(c.id))
 
   return (
-    <div className="pagina">
+    <div className="page">
       <div className="page-header">
         <div className="page-header__left">
           <button className="btn-ghost" style={{ fontSize:'0.8125rem', padding:'0.25rem 0' }}

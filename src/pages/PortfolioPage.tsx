@@ -124,10 +124,11 @@ export default function PortfolioPage({ role }: { role: string }) {
   const costTotal   = filtered.reduce((s, r) => s + r.cost_actual, 0)
 
   return (
-    <div className="pagina pagina--wide">
+    <div className="page page--wide">
       <div className="page-header">
         <div className="page-header__left">
-          <h1>Portfolio</h1>
+          <div className="page-header__eyebrow">Governança</div>
+          <h1>Portfólio</h1>
           <p className="sutil">Visão executiva de todos os projetos</p>
         </div>
         <div className="page-header__actions">

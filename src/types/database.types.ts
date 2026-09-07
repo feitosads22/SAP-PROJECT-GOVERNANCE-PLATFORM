@@ -1,4 +1,4 @@
-// Gerado por introspecção do schema em 2026-09-06 22:28.
+// Gerado por introspecção do schema em 2026-09-06 23:47.
 // Substituir por `supabase gen types typescript` assim que a CLI estiver disponível.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -157,7 +157,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id?: string
+          organization_id: string
           template_id: string
           label: string
           field_type: string
@@ -189,7 +189,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id?: string
+          organization_id: string
           name: string
           description?: string | null
           is_active?: boolean
@@ -789,7 +789,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id?: string
+          organization_id: string
           resource_id: string
           project_id: string
           role_in_project?: string | null
@@ -891,7 +891,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          organization_id?: string
+          organization_id: string
           evidence_id: string
           field_id: string
           value_text?: string | null
@@ -1168,8 +1168,84 @@ export type Database = {
         }
       }
     }
+      project_customers: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          customer_id: string
+          access_level: string
+          invited_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          customer_id: string
+          access_level?: string
+          invited_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          customer_id?: string
+          access_level?: string
+          invited_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      customer_updates: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          title: string
+          body: string
+          update_type: string
+          is_published: boolean
+          published_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string
+          project_id: string
+          title: string
+          body: string
+          update_type?: string
+          is_published?: boolean
+          published_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          title?: string
+          body?: string
+          update_type?: string
+          is_published?: boolean
+          published_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     Views: { [_ in never]: never }
     Functions: {
+      customer_has_project_access: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
       create_organization: {
         Args: { p_name: string; p_slug: string; p_sap_client_number?: string | null }
         Returns: string
@@ -1183,3 +1259,4 @@ export type Database = {
 
 export type Tables<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Row']
+

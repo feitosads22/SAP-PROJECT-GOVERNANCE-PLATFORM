@@ -71,7 +71,7 @@ export default function Dashboard() {
       sb.from('projects').select('*').order('created_at', { ascending: false }),
       sb.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(6),
       sb.from('milestones').select('*, project:projects(code)')
-        .not('status','eq','completed')
+        .in('status',['not_started','in_progress'])
         .not('due_date','is',null)
         .order('due_date').limit(6),
     ])
@@ -162,6 +162,9 @@ export default function Dashboard() {
     create:  { icon:'+', color:'#16a34a', bg:'#dcfce7' },
     approve: { icon:'✓', color:'#16a34a', bg:'#dcfce7' },
     reject:  { icon:'✗', color:'#dc2626', bg:'#fee2e2' },
+    complete:{ icon:'✓', color:'#16a34a', bg:'#dcfce7' },
+    submit:  { icon:'→', color:'#2563eb', bg:'#dbeafe' },
+    delete:  { icon:'✕', color:'#dc2626', bg:'#fee2e2' },
     default: { icon:'·', color:'#64748b', bg:'#f1f5f9' },
   }
 
@@ -360,7 +363,7 @@ export default function Dashboard() {
                milestones.length === 0 ? <p className="sutil">Nenhum marco próximo.</p> :
                milestones.map(m => {
                 const d = new Date(m.due_date)
-                const sched = d < new Date() ? 'atrasado' : d < new Date(Date.now() + 14*86400000) ? 'critico' : 'ok'
+                const today = new Date(); const in14 = new Date(Date.now() + 14*86400000); const sched = d < today ? 'atrasado' : d < in14 ? 'critico' : 'ok'
                 return (
                   <div key={m.id} className="milestone-item">
                     <div className="milestone-item__date">

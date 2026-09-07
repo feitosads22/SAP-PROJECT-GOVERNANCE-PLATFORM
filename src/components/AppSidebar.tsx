@@ -3,45 +3,40 @@ import { useAuth } from '../contexts/AuthContext'
 
 type Props = { open: boolean; onClose: () => void }
 
-type NavItem = {
-  to: string; label: string; icon: string;
-  roles?: string[]; badge?: number; group?: string;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { to: '/dashboard',  label: 'Dashboard',    icon: '⊞',  group: 'main' },
-  { to: '/',           label: 'Projetos',      icon: '📁',  group: 'main' },
-  { to: '/portfolio',  label: 'Portfólio',     icon: '📊',  group: 'main' },
-  { to: '/knowledge',  label: 'IA & Conhec.',  icon: '🤖',  group: 'main', roles: ['admin','manager','consultant'] },
-  { to: '/minhas',     label: 'Minhas Tarefas',icon: '✓',  group: 'exec', roles: ['admin','manager','consultant'] },
-  { to: '/timesheet',  label: 'Timesheet',     icon: '⏱',  group: 'exec', roles: ['admin','manager','consultant'] },
-  { to: '/capacidade', label: 'Capacidade',    icon: '👥',  group: 'exec', roles: ['admin','manager'] },
-  { to: '/portal-cliente', label: 'Meus Projetos', icon: '🏢', group: 'exec', roles: ['customer'] },
+const NAV = [
+  { group:'principal', label:'Principal', items:[
+    { to:'/dashboard', label:'Dashboard',   icon:'⊞' },
+    { to:'/',          label:'Projetos',    icon:'📁' },
+    { to:'/portfolio', label:'Portfólio',   icon:'📊' },
+    { to:'/demandas',  label:'Demandas',    icon:'📋', roles:['admin','manager','consultant'] },
+  ]},
+  { group:'execucao', label:'Execução', items:[
+    { to:'/minhas',     label:'Minhas Tarefas', icon:'✓',  roles:['admin','manager','consultant'] },
+    { to:'/timesheet',  label:'Timesheet',      icon:'⏱', roles:['admin','manager','consultant'] },
+    { to:'/capacidade', label:'Capacidade',     icon:'👥', roles:['admin','manager'] },
+  ]},
+  { group:'analise', label:'Análise', items:[
+    { to:'/relatorios',  label:'Relatórios',  icon:'📈', roles:['admin','manager','consultant'] },
+    { to:'/documentos',  label:'Documentos',  icon:'📄', roles:['admin','manager','consultant'] },
+    { to:'/knowledge',   label:'IA & Conhec.',icon:'🤖', roles:['admin','manager','consultant'] },
+  ]},
+  { group:'cliente', label:'Cliente', items:[
+    { to:'/portal-cliente', label:'Meus Projetos', icon:'🏢', roles:['customer'] },
+  ]},
 ]
-
-const GROUP_LABELS: Record<string, string> = {
-  main: 'Governança',
-  exec: 'Execução',
-}
 
 export default function AppSidebar({ open, onClose }: Props) {
   const { pathname } = useLocation()
-  const { profile } = useAuth()
+  const { profile }  = useAuth()
   const role = profile?.role ?? ''
 
   const isActive = (to: string) =>
     to === '/' ? pathname === '/' : pathname.startsWith(to)
 
-  const groups = ['main', 'exec']
-  const visibleItems = NAV_ITEMS.filter(item =>
-    !item.roles || item.roles.includes(role)
-  )
-
   return (
     <>
       {open && <div className="sidebar-overlay" onClick={onClose} />}
       <aside className={`sidebar${open ? ' sidebar--open' : ''}`}>
-        {/* Brand */}
         <div className="sidebar__brand">
           <div className="sidebar__brand-icon">⬡</div>
           <div>
@@ -50,26 +45,19 @@ export default function AppSidebar({ open, onClose }: Props) {
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="sidebar__nav">
-          {groups.map(group => {
-            const items = visibleItems.filter(i => i.group === group)
+          {NAV.map(group => {
+            const items = group.items.filter(i => !(i as {roles?:string[]}).roles || (i as {roles?:string[]}).roles!.includes(role))
             if (!items.length) return null
             return (
-              <div key={group}>
-                <div className="sidebar__group-label">{GROUP_LABELS[group]}</div>
+              <div key={group.group}>
+                <div className="sidebar__group-label">{group.label}</div>
                 {items.map(item => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
+                  <Link key={item.to} to={item.to}
                     className={`sidebar__link${isActive(item.to) ? ' sidebar__link--active' : ''}`}
-                    onClick={onClose}
-                  >
+                    onClick={onClose}>
                     <span className="sidebar__link-icon">{item.icon}</span>
                     <span>{item.label}</span>
-                    {item.badge ? (
-                      <span className="sidebar__link-badge">{item.badge}</span>
-                    ) : null}
                   </Link>
                 ))}
                 <div className="sidebar__divider" />
@@ -78,7 +66,6 @@ export default function AppSidebar({ open, onClose }: Props) {
           })}
         </nav>
 
-        {/* Footer */}
         <div className="sidebar__footer">
           <div className="sidebar__footer-name">SAP Governance</div>
           <div className="sidebar__footer-tagline">Melhores decisões,{'\n'}melhores resultados.</div>

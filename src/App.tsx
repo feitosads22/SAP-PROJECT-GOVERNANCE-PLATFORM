@@ -13,6 +13,7 @@ import GovernancePage from './pages/GovernancePage'
 import PortfolioPage from './pages/PortfolioPage'
 import CustomerPortalPage from './pages/CustomerPortalPage'
 import CustomerManagePage from './pages/CustomerManagePage'
+import KnowledgePage from './pages/KnowledgePage'
 import NavBar from './components/NavBar'
 
 function ErroConfiguracao() {
@@ -56,12 +57,14 @@ function App() {
         <Route path="/portfolio"              element={<PortfolioPage role={role} />} />
         <Route path="/portal-cliente"          element={<CustomerPortalPage />} />
         <Route path="/projeto/:id/clientes"    element={<CustomerManagePage role={role} userId={userId} />} />
+        <Route path="/knowledge"               element={<KnowledgePage role={role} userId={userId} />} />
         <Route path="/timesheet"      element={<TimesheetPage role={role} userId={userId} />} />
         <Route path="/projeto/:id/financeiro"   element={<BudgetPage role={role} userId={userId} />} />
         <Route path="/projeto/:id/governanca"  element={<GovernancePage role={role} userId={userId} />} />
         <Route path="/portfolio"              element={<PortfolioPage role={role} />} />
         <Route path="/portal-cliente"          element={<CustomerPortalPage />} />
         <Route path="/projeto/:id/clientes"    element={<CustomerManagePage role={role} userId={userId} />} />
+        <Route path="/knowledge"               element={<KnowledgePage role={role} userId={userId} />} />
         <Route path="*"              element={<Navigate to="/" replace />} />
       </Routes>
     </>

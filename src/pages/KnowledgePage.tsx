@@ -133,10 +133,11 @@ export default function KnowledgePage({ role, userId }: Props) {
   }
 
   return (
-    <div className="pagina">
+    <div className="page">
       <div className="page-header">
         <div className="page-header__left">
-          <h1>Knowledge Base</h1>
+          <div className="page-header__eyebrow">IA & Conhecimento</div>
+          <h1>Assistente IA</h1>
           <p className="sutil">Base de conhecimento SAP + Assistente IA</p>
         </div>
       </div>

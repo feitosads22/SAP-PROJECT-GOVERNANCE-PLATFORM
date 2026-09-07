@@ -43,7 +43,7 @@ export default function Capacity() {
   const atencao    = rows.filter(r => r.capacity_status === 'atencao')
 
   return (
-    <div className="pagina">
+    <div className="page">
       <header className="topo">
         <div>
           <h1>Capacidade de recursos</h1>

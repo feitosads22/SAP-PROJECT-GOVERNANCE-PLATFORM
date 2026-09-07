@@ -125,7 +125,7 @@ export default function TimesheetPage({ userId, role }: Props) {
   )
 
   return (
-    <div className="pagina">
+    <div className="page">
       <header className="topo">
         <div>
           <h1>Timesheet</h1>

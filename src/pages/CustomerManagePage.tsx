@@ -73,11 +73,14 @@ export default function CustomerManagePage({ role, userId }: Props) {
 
   async function addLink() {
     if (!selCustomer || !projectId) return
+    setErro(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('project_customers').insert({
-      project_id: projectId, customer_id: selCustomer,
-      access_level: selAccess, invited_by: userId,
-    })
+    const { error } = await (supabase as any).from('project_customers')
+      .upsert(
+        { project_id: projectId, customer_id: selCustomer,
+          access_level: selAccess, invited_by: userId },
+        { onConflict: 'project_id,customer_id', ignoreDuplicates: false }
+      )
     if (error) { setErro(err(error)); return }
     setSelCustomer(''); void load()
   }

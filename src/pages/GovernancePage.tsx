@@ -8,7 +8,7 @@ type Issue  = Database['public']['Tables']['project_issues']['Row']
 type CR     = Database['public']['Tables']['change_requests']['Row']
 type Tab    = 'risks' | 'issues' | 'cr'
 
-type Props = { role: string; userId: string }
+type Props = { role: string; userId: string; overrideProjectId?: string }
 
 const PROB_LABEL: Record<string,string>   = { low:'Baixa', medium:'Média', high:'Alta', critical:'Crítica' }
 const IMPACT_LABEL: Record<string,string> = { low:'Baixo', medium:'Médio', high:'Alto', critical:'Crítico' }
@@ -58,8 +58,9 @@ function Section({ title, onAdd, children }: {
   )
 }
 
-export default function GovernancePage({ role, userId }: Props) {
-  const { id: projectId } = useParams<{ id: string }>()
+export default function GovernancePage({ role, userId, overrideProjectId }: Props) {
+  const params = useParams<{ id: string }>()
+  const projectId = overrideProjectId ?? params.id
   const navigate = useNavigate()
   const canEdit  = role === 'admin' || role === 'manager'
   const canApprove = role === 'admin' || role === 'manager'
@@ -176,7 +177,7 @@ export default function GovernancePage({ role, userId }: Props) {
   }
 
   return (
-    <div className="pagina">
+    <div className="page">
       <div className="page-header">
         <div className="page-header__left">
           <button className="btn-ghost" style={{ fontSize:'0.8125rem', padding:'0.25rem 0' }}

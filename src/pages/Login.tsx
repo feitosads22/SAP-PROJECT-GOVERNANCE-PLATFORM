@@ -2,55 +2,71 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
-  const [email,    setEmail]    = useState('')
-  const [senha,    setSenha]    = useState('')
-  const [modo,     setModo]     = useState<'entrar' | 'cadastrar'>('entrar')
-  const [erro,     setErro]     = useState<string | null>(null)
-  const [aviso,    setAviso]    = useState<string | null>(null)
-  const [enviando, setEnviando] = useState(false)
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
-  async function enviar() {
-    setErro(null); setAviso(null); setEnviando(true)
-    const resultado = modo === 'entrar'
-      ? await supabase.auth.signInWithPassword({ email, password: senha })
-      : await supabase.auth.signUp({ email, password: senha })
-    setEnviando(false)
-    if (resultado.error) { setErro(resultado.error.message); return }
-    if (modo === 'cadastrar' && !resultado.data.session)
-      setAviso('Cadastro criado. Confirme o e-mail para entrar.')
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setErro(null)
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+    if (error) setErro(error.message)
+    setLoading(false)
   }
 
   return (
     <div className="tela-centro">
       <div className="cartao">
         <div className="auth-logo">
-          <span className="auth-logo__icon">⬡</span>
-          <p className="auth-logo__title">SAP Governance</p>
-          <p className="auth-logo__sub">Plataforma de gestão de projetos SAP</p>
+          <div className="auth-logo__icon">⬡</div>
+          <div className="auth-logo__title">SAP Governance</div>
+          <div className="auth-logo__sub">Gestão de Projetos SAP</div>
         </div>
 
-        <label htmlFor="email">E-mail</label>
-        <input id="email" type="email" autoComplete="email"
-          value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label>E-mail</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="form-group">
+            <label>Senha</label>
+            <input
+              type="password"
+              value={senha}
+              onChange={e => setSenha(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
 
-        <label htmlFor="senha">Senha</label>
-        <input id="senha" type="password"
-          autoComplete={modo === 'entrar' ? 'current-password' : 'new-password'}
-          value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••••" />
+          {erro && (
+            <div style={{
+              background:'var(--danger-bg)', color:'var(--danger)',
+              border:'1px solid #fecaca', borderRadius:'var(--r)',
+              padding:'.625rem .875rem', fontSize:'.875rem',
+              marginBottom:'.875rem'
+            }}>
+              {erro}
+            </div>
+          )}
 
-        {erro  && <p className="erro"  style={{ marginTop:'0.25rem' }}>{erro}</p>}
-        {aviso && <p className="aviso" style={{ marginTop:'0.25rem' }}>{aviso}</p>}
+          <button type="submit" disabled={loading} style={{ width:'100%', marginTop:'.25rem' }}>
+            {loading ? 'Entrando…' : 'Entrar'}
+          </button>
+        </form>
 
-        <button
-          style={{ marginTop:'1rem' }}
-          onClick={enviar} disabled={enviando || !email || !senha}>
-          {enviando ? 'Aguarde…' : modo === 'entrar' ? 'Entrar' : 'Criar conta'}
-        </button>
-
-        <button className="btn-ghost" style={{ marginTop:'0.25rem' }}
-          onClick={() => { setModo(m => m === 'entrar' ? 'cadastrar' : 'entrar'); setErro(null); setAviso(null) }}>
-          {modo === 'entrar' ? 'Não tenho conta' : 'Já tenho conta'}
-        </button>
+        <p style={{ textAlign:'center', marginTop:'1.5rem', fontSize:'.75rem', color:'var(--subtle-2)' }}>
+          SAP Governance Platform · SPS Consulting
+        </p>
       </div>
     </div>
   )

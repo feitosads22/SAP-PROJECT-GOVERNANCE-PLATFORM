@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import type { Project, Task } from '../types/app.types'
 import type { FinancialRow } from '../lib/financial'
 import KanbanBoard from '../components/KanbanBoard'
+import ProjectDocuments from './ProjectDocuments'
 import BudgetPage from './BudgetPage'
 import GovernancePage from './GovernancePage'
 import CustomerManagePage from './CustomerManagePage'
@@ -30,8 +31,6 @@ type Risk   = { id:string; title:string; probability:string; impact:string; scor
 type Issue  = { id:string; title:string; priority:string; status:string; created_at:string }
 
 type Props = { role: string; userId: string }
-type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'
-
 export default function ProjectDetail({ role, userId }: Props) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -105,6 +104,7 @@ export default function ProjectDetail({ role, userId }: Props) {
   const IMPACT_LABEL: Record<string,string> = { low:'Baixo', medium:'Médio', high:'Alto', critical:'Crítico' }
   const ISSUE_STATUS: Record<string,string> = { open:'Aberta', in_progress:'Em andamento', resolved:'Resolvida', closed:'Fechada', cancelled:'Cancelada' }
 
+type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'documentos'|'documentos'
   const TABS: { id: Tab; label: string; icon: string; roles?: string[] }[] = [
     { id:'overview',   label:'Visão Geral',  icon:'📊' },
     { id:'tasks',      label:'Tarefas',       icon:'✓' },
@@ -112,6 +112,7 @@ export default function ProjectDetail({ role, userId }: Props) {
     { id:'financial',  label:'Financeiro',    icon:'💰', roles:['admin','manager','consultant'] },
     { id:'governance', label:'Governança',    icon:'🛡️', roles:['admin','manager','consultant'] },
     { id:'clientes',   label:'Clientes',      icon:'👥', roles:['admin','manager'] },
+    { id:'documentos', label:'Documentos',     icon:'📁' },
   ]
 
   return (
@@ -315,6 +316,10 @@ export default function ProjectDetail({ role, userId }: Props) {
 
       {tab === 'clientes' && (
         <CustomerManagePage role={role} userId={userId} overrideProjectId={project.id} />
+      )}
+
+      {tab === 'documentos' && (
+        <ProjectDocuments projectId={project.id} role={role} />
       )}
     </div>
   )

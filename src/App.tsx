@@ -19,6 +19,8 @@ import CustomerPortalPage  from './pages/CustomerPortalPage'
 import CustomerManagePage  from './pages/CustomerManagePage'
 import KnowledgePage     from './pages/KnowledgePage'
 import DemandsPage       from './pages/DemandsPage'
+import TeamManagePage    from './pages/TeamManagePage'
+import ConsultantDashboard from './pages/ConsultantDashboard'
 import DocumentsPage     from './pages/DocumentsPage'
 import ReportsPage       from './pages/ReportsPage'
 
@@ -52,7 +54,7 @@ function AppLayout() {
       <div className="main-content">
         <AppTopbar onMenuToggle={() => setSidebarOpen(o => !o)} />
         <Routes>
-          <Route path="/dashboard"              element={<Dashboard />} />
+          <Route path="/dashboard"              element={role === 'consultant' ? <ConsultantDashboard /> : <Dashboard />} />
           <Route path="/"                       element={<Projects />} />
           <Route path="/projeto/:id"            element={<ProjectDetail role={role} userId={userId} />} />
           <Route path="/minhas"                 element={<MyTasks role={role} userId={userId} />} />
@@ -67,6 +69,7 @@ function AppLayout() {
           <Route path="/demandas"               element={<DemandsPage />} />
           <Route path="/documentos"             element={<DocumentsPage />} />
           <Route path="/relatorios"             element={<ReportsPage />} />
+          <Route path="/equipe"                   element={<TeamManagePage role={role} />} />
           <Route path="*"                       element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>

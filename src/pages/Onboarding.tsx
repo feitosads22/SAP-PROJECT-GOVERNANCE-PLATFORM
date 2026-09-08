@@ -2,81 +2,69 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
-/**
- * Usuário autenticado sem organização (role 'pending').
- * A criação da organização passa obrigatoriamente pela RPC
- * create_organization(): é ela que cria a org e promove o criador a admin,
- * dentro de uma transação. O frontend não escreve role nem organization_id
- * em profiles — o trigger enforce_profile_privileges bloqueia isso.
- */
 export default function Onboarding() {
-  const { profile, refreshProfile, signOut } = useAuth()
-  const [nome, setNome] = useState('')
-  const [slug, setSlug] = useState('')
-  const [clienteSap, setClienteSap] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
-  const [enviando, setEnviando] = useState(false)
+  const { session } = useAuth()
+  const [orgName, setOrgName] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [loading, setLoading]  = useState(false)
+  const [erro, setErro]        = useState<string | null>(null)
 
-  function sugerirSlug(valor: string) {
-    setNome(valor)
-    setSlug(
-      valor
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, ''),
-    )
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
 
-  async function criar() {
-    setErro(null)
-    setEnviando(true)
-  const { error } = await (supabase as any).rpc('create_organization', {
-      p_name: nome,
-      p_slug: slug,
-      p_sap_client_number: clienteSap || null,
-    })
-
-    setEnviando(false)
-
-    if (error) {
-      setErro(
-        error.message.includes('ALREADY_IN_ORG')
-          ? 'Você já pertence a uma organização.'
-          : error.message,
-      )
-      return
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!orgName.trim() || !fullName.trim()) return
+    setErro(null); setLoading(true)
+    try {
+      const { data: org, error: orgErr } = await sb.from('organizations').insert({ name: orgName.trim() }).select().single()
+      if (orgErr) throw orgErr
+      const { error: profErr } = await sb.from('profiles').upsert({
+        id: session!.user.id,
+        email: session!.user.email,
+        full_name: fullName.trim(),
+        organization_id: org.id,
+        role: 'admin',
+      })
+      if (profErr) throw profErr
+      window.location.reload()
+    } catch (err: unknown) {
+      setErro(err instanceof Error ? err.message : String(err))
     }
-    await refreshProfile()
+    setLoading(false)
   }
 
   return (
     <div className="tela-centro">
       <div className="cartao">
-        <h1>Criar organização</h1>
-        <p className="sutil">
-          {profile?.email} ainda não pertence a nenhuma organização. Crie a sua para
-          começar — você será o administrador dela.
-        </p>
+        <div className="auth-logo">
+          <div className="auth-logo__icon">⬡</div>
+          <div className="auth-logo__title">Configuração inicial</div>
+          <div className="auth-logo__sub">Crie sua organização para começar</div>
+        </div>
 
-        <label htmlFor="nome">Nome da organização</label>
-        <input id="nome" value={nome} onChange={(e) => sugerirSlug(e.target.value)} />
+        <form onSubmit={handleCreate}>
+          <div className="form-group">
+            <label>Seu nome completo</label>
+            <input value={fullName} onChange={e => setFullName(e.target.value)}
+              placeholder="Ex: Bruna Lemos" required />
+          </div>
+          <div className="form-group">
+            <label>Nome da organização</label>
+            <input value={orgName} onChange={e => setOrgName(e.target.value)}
+              placeholder="Ex: SPS Consulting" required />
+          </div>
 
-        <label htmlFor="slug">Identificador</label>
-        <input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+          {erro && (
+            <div style={{ background:'var(--danger-bg)', color:'var(--danger)', border:'1px solid #fecaca', borderRadius:'var(--r)', padding:'.625rem .875rem', fontSize:'.875rem', marginBottom:'.875rem' }}>
+              {erro}
+            </div>
+          )}
 
-        <label htmlFor="sap">Número do cliente SAP (opcional)</label>
-        <input id="sap" value={clienteSap} onChange={(e) => setClienteSap(e.target.value)} />
-
-        {erro && <p className="erro">{erro}</p>}
-
-        <button onClick={criar} disabled={enviando || !nome || !slug}>
-          {enviando ? 'Criando…' : 'Criar organização'}
-        </button>
-        <button className="link" onClick={signOut}>
-          Sair
-        </button>
+          <button type="submit" disabled={loading} style={{ width:'100%', marginTop:'.25rem' }}>
+            {loading ? 'Criando…' : 'Criar organização'}
+          </button>
+        </form>
       </div>
     </div>
   )

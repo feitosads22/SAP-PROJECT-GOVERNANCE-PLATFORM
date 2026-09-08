@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import CreateProjectModal from '../components/CreateProjectModal'
 import { useNavigate } from 'react-router-dom'
 import { getProjects } from '../lib/api'
 import type { Project } from '../types/app.types'
@@ -30,6 +31,7 @@ export default function Projects() {
   const [filterStatus,   setFilterStatus]   = useState('')
   const [filterPriority, setFilterPriority] = useState('')
   const [filterModule,   setFilterModule]   = useState('')
+  const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
     getProjects().then(({ data, error }) => {
@@ -65,7 +67,8 @@ export default function Projects() {
   }
 
   return (
-    <div className="page">
+    <>
+      <div className="page">
       <div className="page-header">
         <div>
           <div className="page-header__eyebrow">Governança</div>
@@ -87,7 +90,7 @@ export default function Projects() {
               </button>
             ))}
           </div>
-          <button onClick={() => navigate('/dashboard')}>+ Novo Projeto</button>
+          <button onClick={() => setShowCreate(true)}>+ Novo Projeto</button>
         </div>
       </div>
 
@@ -219,6 +222,13 @@ export default function Projects() {
           </table>
         </div>
       )}
-    </div>
+      </div>
+      {showCreate && (
+      <CreateProjectModal
+        onClose={() => setShowCreate(false)}
+        onCreated={() => { setShowCreate(false); getProjects().then(({data}) => setProjects(data??[])) }}
+      />
+      )}
+    </>
   )
 }

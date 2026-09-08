@@ -6,7 +6,6 @@ import type { Project } from '../types/app.types'
 
 type Profile = { id: string; full_name: string | null; email: string | null; role: string }
 type Module  = { id: string; name: string; code: string }
-type Phase   = { id: string; name: string; code: string }
 
 type Props = {
   projectId:      string
@@ -35,7 +34,6 @@ export default function CreateTaskModal({
 }: Props) {
   const [profiles,  setProfiles]  = useState<Profile[]>([])
   const [modules,   setModules]   = useState<Module[]>([])
-  const [phases,    setPhases]    = useState<Phase[]>([])
   const [saving,    setSaving]    = useState(false)
   const [erro,      setErro]      = useState<string | null>(null)
 
@@ -46,7 +44,7 @@ export default function CreateTaskModal({
   const [assigneeId,       setAssigneeId]       = useState('')
   const [reviewerId,       setReviewerId]       = useState('')
   const [moduleId,         setModuleId]         = useState('')
-  const [phaseId,          setPhaseId]          = useState('')
+  const [phaseId,          ] = useState('')  // kept for phase_id in insert
   const [sapPhase,         setSapPhase]         = useState('')
   const [startDate,        setStartDate]        = useState('')
   const [endDate,          setEndDate]          = useState('')
@@ -57,7 +55,7 @@ export default function CreateTaskModal({
 
   useEffect(() => {
     if (projectId) void loadProjectData(projectId)
-    else { setModules([]); setPhases([]) }
+    else { setModules([]) }
   }, [projectId])
 
   async function loadProfiles() {
@@ -66,15 +64,9 @@ export default function CreateTaskModal({
   }
 
   async function loadProjectData(pid: string) {
-    const [rM, rP] = await Promise.all([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('project_modules').select('id,name,code').eq('project_id', pid).order('sort_order'),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('phases').select('id,name,code').eq('project_id', pid).order('sort_order'),
-    ])
-    if (!rM.error) setModules(rM.data ?? [])
-    if (!rP.error) setPhases(rP.data ?? [])
-    setModuleId(''); setPhaseId('')
+    const { data: mData, error: mErr } = await (supabase as any).from('project_modules').select('id,name,code').eq('project_id', pid).order('sort_order')
+    if (!mErr) setModules(mData ?? [])
+    setModuleId('')
   }
 
   async function handleCreate() {
@@ -155,21 +147,16 @@ export default function CreateTaskModal({
               </select>
             </div>
 
-            <div>
+<div>
               <label>Módulo SAP</label>
-              <select value={moduleId} onChange={e => setModuleId(e.target.value)}
-                disabled={!projectId}>
+              <select value={moduleId} onChange={e => setModuleId(e.target.value)}>
                 <option value="">— Nenhum —</option>
-                {modules.map(m => <option key={m.id} value={m.id}>{m.code} — {m.name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label>Fase do projeto</label>
-              <select value={phaseId} onChange={e => setPhaseId(e.target.value)}
-                disabled={!projectId}>
-                <option value="">— Nenhuma —</option>
-                {phases.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                {['FI','CO','MM','SD','PP','WM','HCM','PS','PM','QM','FI/TR','BW/BO','HCM/SF','MM/SD'].map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+                {modules.filter(m => !['FI','CO','MM','SD','PP','WM','HCM','PS','PM','QM','FI/TR','BW/BO','HCM/SF','MM/SD'].includes(m.code)).map(m => (
+                  <option key={m.id} value={m.code}>{m.code} — {m.name}</option>
+                ))}
               </select>
             </div>
 

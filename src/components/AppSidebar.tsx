@@ -5,20 +5,24 @@ type Props = { open: boolean; onClose: () => void }
 
 const NAV = [
   { group:'principal', label:'Principal', items:[
-    { to:'/dashboard', label:'Dashboard',   icon:'⊞' },
-    { to:'/',          label:'Projetos',    icon:'📁' },
-    { to:'/portfolio', label:'Portfólio',   icon:'📊' },
-    { to:'/demandas',  label:'Demandas',    icon:'📋', roles:['admin','manager','consultant'] },
+    { to:'/dashboard', label:'Dashboard',   icon:'⊞', roles:['admin','manager'] },
+    { to:'/dashboard', label:'Meu Painel',  icon:'⊞', roles:['consultant'] },
+    { to:'/',          label:'Projetos',    icon:'📁', roles:['admin','manager'] },
+    { to:'/portfolio', label:'Portfólio',   icon:'📊', roles:['admin','manager'] },
+    { to:'/demandas',  label:'Demandas',    icon:'📋', roles:['admin','manager'] },
   ]},
   { group:'execucao', label:'Execução', items:[
-    { to:'/minhas',     label:'Minhas Tarefas', icon:'✓',  roles:['admin','manager','consultant'] },
-    { to:'/timesheet',  label:'Timesheet',      icon:'⏱', roles:['admin','manager','consultant'] },
+    { to:'/minhas',     label:'Minhas Tarefas', icon:'✓'  },
+    { to:'/timesheet',  label:'Timesheet',      icon:'⏱' },
     { to:'/capacidade', label:'Capacidade',     icon:'👥', roles:['admin','manager'] },
   ]},
   { group:'analise', label:'Análise', items:[
-    { to:'/relatorios',  label:'Relatórios',  icon:'📈', roles:['admin','manager','consultant'] },
-    { to:'/documentos',  label:'Documentos',  icon:'📄', roles:['admin','manager','consultant'] },
-    { to:'/knowledge',   label:'IA & Conhec.',icon:'🤖', roles:['admin','manager','consultant'] },
+    { to:'/relatorios',  label:'Relatórios',   icon:'📈', roles:['admin','manager'] },
+    { to:'/documentos',  label:'Documentos',   icon:'📄', roles:['admin','manager','consultant'] },
+    { to:'/knowledge',   label:'IA & Conhec.', icon:'🤖', roles:['admin','manager','consultant'] },
+  ]},
+  { group:'admin', label:'Administração', items:[
+    { to:'/equipe', label:'Usuários & Perfis', icon:'👤', roles:['admin','manager'] },
   ]},
   { group:'cliente', label:'Cliente', items:[
     { to:'/portal-cliente', label:'Meus Projetos', icon:'🏢', roles:['customer'] },

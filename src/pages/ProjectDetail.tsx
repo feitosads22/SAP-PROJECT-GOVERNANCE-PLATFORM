@@ -44,6 +44,7 @@ export default function ProjectDetail({ role, userId }: Props) {
   const [risks,    setRisks]    = useState<Risk[]>([])
   const [issues,   setIssues]   = useState<Issue[]>([])
   const [summary,  setSummary]  = useState<{ health_score: number | null; health_status: string | null; schedule_status: string; days_remaining: number | null } | null>(null)
+  const [activity, setActivity] = useState<{ id: string; icon: string; who: string; text: string; taskTitle?: string; when: string }[]>([])
   const [loading,  setLoading]  = useState(true)
   const [erro,     setErro]     = useState<string | null>(null)
 
@@ -74,6 +75,37 @@ export default function ProjectDetail({ role, userId }: Props) {
   }
 
   useEffect(() => { void load() }, [id])
+
+  useEffect(() => {
+    if (tasks.length === 0) { setActivity([]); return }
+    const ids = tasks.map(t => t.id)
+    const titleOf = (tid: string) => tasks.find(t => t.id === tid)?.title
+    const FIELD_LABEL: Record<string, string> = { status: 'status', priority: 'prioridade', assignee_id: 'responsável', reviewer_id: 'revisor' }
+    Promise.all([
+      sb.from('task_history').select('id,field,old_value,new_value,created_at,task_id,changer:profiles(full_name)').in('task_id', ids).order('created_at', { ascending: false }).limit(10),
+      sb.from('task_comments').select('id,body,created_at,task_id,author:profiles(full_name)').in('task_id', ids).order('created_at', { ascending: false }).limit(10),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ]).then(([{ data: h }, { data: c }]: any[]) => {
+      const items = [
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...(h ?? []).map((r: any) => ({
+          id: 'h' + r.id, when: r.created_at, icon: '✏️',
+          who: r.changer?.full_name ?? 'Alguém',
+          text: `alterou ${FIELD_LABEL[r.field] ?? r.field} de "${r.old_value ?? '—'}" para "${r.new_value ?? '—'}"`,
+          taskTitle: titleOf(r.task_id),
+        })),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...(c ?? []).map((r: any) => ({
+          id: 'c' + r.id, when: r.created_at, icon: '💬',
+          who: r.author?.full_name ?? 'Alguém',
+          text: `comentou: "${String(r.body).slice(0, 80)}"`,
+          taskTitle: titleOf(r.task_id),
+        })),
+      ].sort((a, b) => b.when.localeCompare(a.when)).slice(0, 15)
+      setActivity(items)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks])
 
   if (loading) return (
     <div className="page">
@@ -315,6 +347,26 @@ type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'docum
               {issues.filter(i=>['open','in_progress'].includes(i.status)).length === 0 && (
                 <p className="sutil">Nenhuma issue aberta. ✓</p>
               )}
+            </div>
+          </div>
+
+          {/* Atividades recentes */}
+          <div className="card" style={{ gridColumn: '1 / -1' }}>
+            <div className="card__header">
+              <span className="card__title"><span className="card__title-icon">🕓</span>Atividades Recentes</span>
+            </div>
+            <div className="card__body">
+              {activity.length === 0 ? (
+                <p className="sutil">Sem atividade recente.</p>
+              ) : activity.map(a => (
+                <div key={a.id} style={{ display:'flex', gap:'.625rem', padding:'.5rem 0', borderBottom:'1px solid var(--border)' }}>
+                  <span style={{ fontSize:'1rem' }}>{a.icon}</span>
+                  <div style={{ flex:1, fontSize:'.8125rem' }}>
+                    <strong>{a.who}</strong> {a.text} {a.taskTitle && <span className="sutil">— {a.taskTitle}</span>}
+                    <div style={{ fontSize:'.6875rem', color:'var(--subtle)' }}>{new Date(a.when).toLocaleString('pt-BR')}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from './Toast'
+import TaskActivity from './TaskActivity'
 import type { Task } from '../types/app.types'
 
 const SAP_PHASES  = ['Descobrir','Preparar','Explorar','Realizar','Implementar','Executar']
@@ -123,6 +124,7 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
               <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
                 placeholder="Detalhes, contexto, links…" />
             </div>
+            <TaskActivity taskId={task.id} taskTitle={task.title} />
           </div>
 
           <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '.75rem', background: 'var(--surface-2)' }}>

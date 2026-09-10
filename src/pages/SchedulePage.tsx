@@ -1,53 +1,57 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { toast } from '../components/Toast'
 
 type Milestone = {
   id: string; name: string; description: string | null
-  due_date: string; status: string; phase_id: string | null
+  due_date: string; status: string
 }
 type Task = {
   id: string; title: string; status: string; priority: string
   start_date: string | null; due_date: string | null
   sap_activate_phase: string | null; estimated_hours: number | null
-  actual_hours: number | null; assignee_id: string | null
   progress: number
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  not_started: '#94A3B8', in_progress: '#0A6ED1',
-  completed: '#16A34A', cancelled: '#DC2626',
+const SAP_COLOR: Record<string,string> = {
+  Descobrir:'#8B5CF6',Preparar:'#3B82F6',Explorar:'#06B6D4',
+  Realizar:'#10B981',Implementar:'#F59E0B',Executar:'#EF4444',
 }
-const SAP_PHASE_COLOR: Record<string, string> = {
-  Descobrir: '#8B5CF6', Preparar: '#3B82F6', Explorar: '#06B6D4',
-  Realizar: '#10B981', Implementar: '#F59E0B', Executar: '#EF4444',
+const TASK_COLOR: Record<string,string> = {
+  todo:'#94A3B8',in_progress:'#0A6ED1',blocked:'#DC2626',
+  validation:'#F59E0B',adjustment_required:'#F97316',completed:'#16A34A',cancelled:'#6B7280',
 }
-const TASK_STATUS_COLOR: Record<string, string> = {
-  todo: '#94A3B8', in_progress: '#0A6ED1', blocked: '#DC2626',
-  validation: '#F59E0B', adjustment_required: '#F97316',
-  completed: '#16A34A', cancelled: '#6B7280',
+const MIL_STATUS: Record<string,string> = {
+  not_started:'Não iniciado',in_progress:'Em andamento',completed:'Concluído',cancelled:'Cancelado',
 }
 
 type Props = { projectId?: string; role: string }
 
 export default function SchedulePage({ projectId: propId, role }: Props) {
-  const params = useParams<{ id: string }>()
+  const params    = useParams<{ id: string }>()
   const projectId = propId ?? params.id
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [tasks,      setTasks]      = useState<Task[]>([])
   const [loading,    setLoading]    = useState(true)
-  const [view,       setView]       = useState<'gantt' | 'list'>('gantt')
+  const [view,       setView]       = useState<'gantt'|'list'>('gantt')
   const [filterPhase,setFilterPhase]= useState('')
+  const [showMilForm,setShowMilForm]= useState(false)
+  const [milName,    setMilName]    = useState('')
+  const [milDate,    setMilDate]    = useState('')
+  const [milDesc,    setMilDesc]    = useState('')
+  const [savingMil,  setSavingMil]  = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const canEdit = ['admin', 'manager'].includes(role)
+  const canEdit = ['admin','manager'].includes(role)
 
   async function load() {
     if (!projectId) return
     setLoading(true)
     const [rM, rT] = await Promise.all([
       sb.from('milestones').select('*').eq('project_id', projectId).order('due_date'),
-      sb.from('tasks').select('id,title,status,priority,start_date,due_date,sap_activate_phase,estimated_hours,actual_hours,assignee_id,progress')
+      sb.from('tasks')
+        .select('id,title,status,priority,start_date,due_date,sap_activate_phase,estimated_hours,progress')
         .eq('project_id', projectId).order('due_date', { ascending: true }),
     ])
     if (!rM.error) setMilestones(rM.data ?? [])
@@ -57,177 +61,168 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
 
   useEffect(() => { void load() }, [projectId])
 
-  const phases = [...new Set(tasks.map(t => t.sap_activate_phase).filter(Boolean))] as string[]
-  const filtered = tasks.filter(t => !filterPhase || t.sap_activate_phase === filterPhase)
-
-  // Calcular range de datas para o gantt
-  const allDates = [
-    ...filtered.filter(t => t.start_date).map(t => new Date(t.start_date!)),
-    ...filtered.filter(t => t.due_date).map(t => new Date(t.due_date!)),
-    ...milestones.map(m => new Date(m.due_date)),
-  ]
-  const minDate = allDates.length > 0
-    ? new Date(Math.min(...allDates.map(d => d.getTime())))
-    : new Date()
-  const maxDate = allDates.length > 0
-    ? new Date(Math.max(...allDates.map(d => d.getTime())))
-    : new Date(Date.now() + 30 * 86400000)
-  const totalDays = Math.max(1, Math.ceil((maxDate.getTime() - minDate.getTime()) / 86400000)) + 14
-
-  function dayOffset(date: Date) {
-    return Math.floor((date.getTime() - minDate.getTime()) / 86400000)
+  async function saveMilestone(e: React.FormEvent) {
+    e.preventDefault()
+    if (!milName.trim() || !milDate) return
+    setSavingMil(true)
+    const { error } = await sb.from('milestones').insert({
+      project_id: projectId, name: milName.trim(),
+      description: milDesc.trim() || null, due_date: milDate, status: 'not_started',
+    })
+    if (error) { toast(error.message, 'error') }
+    else { toast('Marco criado!', 'ok'); setMilName(''); setMilDate(''); setMilDesc(''); setShowMilForm(false); void load() }
+    setSavingMil(false)
   }
 
-  // Generate month labels
-  const months: { label: string; left: number; width: number }[] = []
+  async function deleteMilestone(id: string) {
+    if (!confirm('Excluir este marco?')) return
+    await sb.from('milestones').delete().eq('id', id)
+    toast('Marco removido.', 'warn'); void load()
+  }
+
+  const phases   = [...new Set(tasks.map(t => t.sap_activate_phase).filter(Boolean))] as string[]
+  const filtered = tasks.filter(t => !filterPhase || t.sap_activate_phase === filterPhase)
+  const today    = new Date()
+
+  const allDates = [
+    ...filtered.filter(t=>t.start_date).map(t=>new Date(t.start_date!)),
+    ...filtered.filter(t=>t.due_date).map(t=>new Date(t.due_date!)),
+    ...milestones.map(m=>new Date(m.due_date)),
+  ]
+  const minDate   = allDates.length>0 ? new Date(Math.min(...allDates.map(d=>d.getTime()))) : today
+  const maxDate   = allDates.length>0 ? new Date(Math.max(...allDates.map(d=>d.getTime()))) : new Date(Date.now()+60*86400000)
+  const totalDays = Math.max(1, Math.ceil((maxDate.getTime()-minDate.getTime())/86400000))+14
+  const pct = (d: Date) => Math.min(100,Math.max(0,((d.getTime()-minDate.getTime())/86400000/totalDays)*100))
+  const todayPct  = pct(today)
+  const NAME_W    = 220
+
+  const months: {label:string;left:number;width:number}[] = []
   let cur = new Date(minDate.getFullYear(), minDate.getMonth(), 1)
   while (cur <= maxDate) {
-    const nextMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
-    const startDay = Math.max(0, dayOffset(cur))
-    const endDay   = Math.min(totalDays, dayOffset(nextMonth))
-    months.push({
-      label: cur.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-      left:  (startDay / totalDays) * 100,
-      width: ((endDay - startDay) / totalDays) * 100,
-    })
-    cur = nextMonth
+    const next = new Date(cur.getFullYear(), cur.getMonth()+1, 1)
+    months.push({ label: cur.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}), left: pct(cur), width: pct(next)-pct(cur) })
+    cur = next
   }
 
-  const today = new Date()
-  const todayPct = Math.min(100, Math.max(0, (dayOffset(today) / totalDays) * 100))
+  const SAP_PHASES = ['Descobrir','Preparar','Explorar','Realizar','Implementar','Executar']
 
   return (
     <div>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', gap: '.25rem', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '.2rem' }}>
-          {(['gantt', 'list'] as const).map(v => (
-            <button key={v} onClick={() => setView(v)} style={{
-              background: view === v ? 'var(--surface)' : 'none', border: 'none',
-              borderRadius: 'var(--r-sm)', padding: '.3rem .75rem',
-              fontSize: '.8125rem', fontWeight: view === v ? 600 : 400,
-              color: view === v ? 'var(--text)' : 'var(--subtle)',
-              boxShadow: view === v ? 'var(--shadow-xs)' : 'none',
-            }}>
-              {v === 'gantt' ? '📊 Gantt' : '☰ Lista'}
+      <div style={{ display:'flex', gap:'.75rem', flexWrap:'wrap', alignItems:'center', marginBottom:'1.25rem' }}>
+        <div style={{ display:'flex', gap:'.25rem', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--r)', padding:'.2rem' }}>
+          {(['gantt','list'] as const).map(v => (
+            <button key={v} onClick={()=>setView(v)} style={{ background:view===v?'var(--surface)':'', border:'none', borderRadius:'var(--r-sm)', padding:'.3rem .75rem', fontSize:'.8125rem', fontWeight:view===v?600:400, color:view===v?'var(--text)':'', boxShadow:view===v?'var(--shadow-xs)':'' }}>
+              {v==='gantt'?'📊 Gantt':'☰ Lista'}
             </button>
           ))}
         </div>
-        <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)}
-          style={{ width: 'auto', fontSize: '.8125rem' }}>
-          <option value="">Todas as fases SAP</option>
-          {phases.map(p => <option key={p} value={p}>{p}</option>)}
+        <select value={filterPhase} onChange={e=>setFilterPhase(e.target.value)} style={{ width:'auto', fontSize:'.8125rem' }}>
+          <option value="">Todas as fases</option>
+          {phases.map(p=><option key={p} value={p}>{p}</option>)}
         </select>
-        {filterPhase && (
-          <button className="btn-ghost btn-sm" onClick={() => setFilterPhase('')}>Limpar</button>
-        )}
-        <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--subtle)' }}>
-          {filtered.length} tarefa{filtered.length !== 1 ? 's' : ''} · {milestones.length} marco{milestones.length !== 1 ? 's' : ''}
-        </span>
+        {filterPhase && <button className="btn-ghost btn-sm" onClick={()=>setFilterPhase('')}>Limpar</button>}
+        {canEdit && <button className="btn-sm" onClick={()=>setShowMilForm(v=>!v)} style={{ marginLeft:'auto' }}>{showMilForm?'✕':'+ Marco'}</button>}
       </div>
 
+      {showMilForm && canEdit && (
+        <form onSubmit={saveMilestone} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:'1rem', marginBottom:'1rem', display:'flex', gap:'.75rem', flexWrap:'wrap', alignItems:'flex-end' }}>
+          <div style={{ flex:2, minWidth:160 }}>
+            <label>Nome do marco *</label>
+            <input value={milName} onChange={e=>setMilName(e.target.value)} required placeholder="Ex: Go-Live Fase 1" />
+          </div>
+          <div style={{ flex:1, minWidth:140 }}>
+            <label>Data *</label>
+            <input type="date" value={milDate} onChange={e=>setMilDate(e.target.value)} required />
+          </div>
+          <div style={{ flex:2, minWidth:160 }}>
+            <label>Descrição</label>
+            <input value={milDesc} onChange={e=>setMilDesc(e.target.value)} placeholder="Opcional" />
+          </div>
+          <div style={{ display:'flex', gap:'.5rem' }}>
+            <button type="button" className="btn-secondary btn-sm" onClick={()=>setShowMilForm(false)}>Cancelar</button>
+            <button type="submit" disabled={savingMil}>{savingMil?'…':'✓ Criar'}</button>
+          </div>
+        </form>
+      )}
+
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-          {[1,2,3,4,5].map(i => <div key={i} style={{ height: 44, borderRadius: 'var(--r)' }} className="skeleton" />)}
+        <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+          {[1,2,3].map(i=><div key={i} style={{ height:40, borderRadius:'var(--r)' }} className="skeleton"/>)}
         </div>
-      ) : filtered.length === 0 && milestones.length === 0 ? (
+      ) : filtered.length===0 && milestones.length===0 ? (
         <div className="empty-state">
           <div className="empty-state__icon">📅</div>
           <div className="empty-state__title">Sem dados de cronograma</div>
-          <p className="empty-state__desc">Adicione tarefas com datas de início e fim para visualizar o Gantt.</p>
+          <p className="empty-state__desc">Adicione tarefas com datas e use "+ Marco" para criar marcos.</p>
         </div>
-      ) : view === 'gantt' ? (
-        /* ── GANTT VIEW ─────────────────────────────────── */
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <div style={{ minWidth: 900 }}>
-              {/* Month headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ padding: '.5rem 1rem', fontSize: '.6875rem', fontWeight: 700, color: 'var(--subtle)', background: 'var(--surface-2)' }}>TAREFA</div>
-                <div style={{ position: 'relative', height: 32, background: 'var(--surface-2)' }}>
-                  {months.map((m, i) => (
-                    <div key={i} style={{ position: 'absolute', left: `${m.left}%`, width: `${m.width}%`, top: 0, bottom: 0, borderLeft: '1px solid var(--border)', display: 'flex', alignItems: 'center', paddingLeft: '.375rem', fontSize: '.625rem', fontWeight: 700, color: 'var(--subtle)', textTransform: 'uppercase', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+      ) : view==='gantt' ? (
+        <div className="card" style={{ overflow:'hidden' }}>
+          <div style={{ overflowX:'auto' }}>
+            <div style={{ minWidth:800 }}>
+              <div style={{ display:'grid', gridTemplateColumns:`${NAME_W}px 1fr`, borderBottom:'1px solid var(--border)' }}>
+                <div style={{ background:'var(--surface-2)', padding:'.4rem .875rem', fontSize:'.6875rem', fontWeight:700, color:'var(--subtle)' }}>ITEM</div>
+                <div style={{ position:'relative', height:28, background:'var(--surface-2)' }}>
+                  {months.map((m,i)=>(
+                    <div key={i} style={{ position:'absolute', left:`${m.left}%`, width:`${m.width}%`, top:0, bottom:0, borderLeft:'1px solid var(--border)', padding:'0 .25rem', display:'flex', alignItems:'center', fontSize:'.5625rem', fontWeight:700, color:'var(--subtle)', textTransform:'uppercase', overflow:'hidden', whiteSpace:'nowrap' }}>
                       {m.label}
                     </div>
                   ))}
-                  {/* Today line */}
-                  <div style={{ position: 'absolute', left: `${todayPct}%`, top: 0, bottom: 0, width: 2, background: 'var(--danger)', opacity: .7 }} />
+                  <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:2, background:'var(--danger)', opacity:.6 }}/>
                 </div>
               </div>
 
-              {/* Milestones */}
-              {milestones.map(m => {
-                const d = new Date(m.due_date)
-                const pct = Math.min(99, Math.max(0, (dayOffset(d) / totalDays) * 100))
+              {milestones.map(m=>{
+                const d = new Date(m.due_date); const p = pct(d)
+                const over = d<today && m.status!=='completed'
                 return (
-                  <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '240px 1fr', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-                    <div style={{ padding: '.5rem 1rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                      <span style={{ fontSize: '.875rem' }}>🔷</span>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
-                        <div style={{ fontSize: '.625rem', color: 'var(--subtle)' }}>{d.toLocaleDateString('pt-BR')}</div>
+                  <div key={m.id} style={{ display:'grid', gridTemplateColumns:`${NAME_W}px 1fr`, borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ padding:'.5rem .875rem', display:'flex', alignItems:'center', gap:'.375rem', background:'var(--surface)' }}>
+                      <span>🔷</span>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:'.8125rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:over?'var(--danger)':'var(--text)' }}>{m.name}</div>
+                        <div style={{ fontSize:'.5625rem', color:'var(--subtle)' }}>{d.toLocaleDateString('pt-BR')} · {MIL_STATUS[m.status]??m.status}</div>
                       </div>
+                      {canEdit && <button className="btn-ghost btn-sm" onClick={()=>deleteMilestone(m.id)} style={{ marginLeft:'auto', fontSize:'.5625rem', padding:'.1rem .3rem', opacity:.5 }}>✕</button>}
                     </div>
-                    <div style={{ position: 'relative', height: 40 }}>
-                      <div style={{ position: 'absolute', left: `${pct}%`, top: '50%', transform: 'translate(-50%,-50%)', width: 12, height: 12, background: STATUS_COLOR[m.status] ?? '#94A3B8', borderRadius: 2, rotate: '45deg', border: '2px solid white', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} title={m.name} />
-                      <div style={{ position: 'absolute', left: `${todayPct}%`, top: 0, bottom: 0, width: 1, background: 'var(--danger)', opacity: .3 }} />
+                    <div style={{ position:'relative', height:40, background:'var(--surface)' }}>
+                      <div style={{ position:'absolute', left:`${p}%`, top:'50%', transform:'translate(-50%,-50%)', width:12, height:12, background:over?'var(--danger)':m.status==='completed'?'var(--ok)':'var(--brand)', borderRadius:2, rotate:'45deg', border:'2px solid white', boxShadow:'var(--shadow-xs)' }}/>
+                      <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1, background:'var(--danger)', opacity:.2 }}/>
                     </div>
                   </div>
                 )
               })}
 
-              {/* Tasks grouped by SAP phase */}
-              {(['Descobrir','Preparar','Explorar','Realizar','Implementar','Executar'] as const).map(ph => {
-                const group = filtered.filter(t => t.sap_activate_phase === ph)
+              {SAP_PHASES.map(ph=>{
+                const group = filtered.filter(t=>t.sap_activate_phase===ph)
                 if (!group.length) return null
                 return (
                   <div key={ph}>
-                    {/* Phase header */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', background: SAP_PHASE_COLOR[ph] + '15', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ padding: '.375rem 1rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: SAP_PHASE_COLOR[ph], flexShrink: 0 }} />
-                        <span style={{ fontWeight: 700, fontSize: '.75rem', color: SAP_PHASE_COLOR[ph] }}>{ph}</span>
-                        <span style={{ fontSize: '.6875rem', color: 'var(--subtle)' }}>({group.length})</span>
+                    <div style={{ display:'grid', gridTemplateColumns:`${NAME_W}px 1fr`, background:`${SAP_COLOR[ph]}18`, borderBottom:'1px solid var(--border)' }}>
+                      <div style={{ padding:'.375rem .875rem', display:'flex', alignItems:'center', gap:'.375rem' }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background:SAP_COLOR[ph] }}/>
+                        <span style={{ fontWeight:700, fontSize:'.75rem', color:SAP_COLOR[ph] }}>{ph}</span>
+                        <span style={{ fontSize:'.625rem', color:'var(--subtle)' }}>({group.length})</span>
                       </div>
-                      <div style={{ position: 'relative' }}>
-                        <div style={{ position: 'absolute', left: `${todayPct}%`, top: 0, bottom: 0, width: 1, background: 'var(--danger)', opacity: .3 }} />
-                      </div>
+                      <div style={{ position:'relative' }}><div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1, background:'var(--danger)', opacity:.2 }}/></div>
                     </div>
-                    {/* Tasks */}
-                    {group.map(task => {
-                      const start = task.start_date ? new Date(task.start_date) : null
-                      const end   = task.due_date   ? new Date(task.due_date)   : null
-                      const startPct = start ? Math.min(99, Math.max(0, (dayOffset(start) / totalDays) * 100)) : null
-                      const endPct   = end   ? Math.min(100, Math.max(0, (dayOffset(end)   / totalDays) * 100)) : null
-                      const width    = startPct !== null && endPct !== null ? Math.max(0.5, endPct - startPct) : null
-                      const isOverdue = end && end < today && task.status !== 'completed'
+                    {group.map(task=>{
+                      const s = task.start_date ? pct(new Date(task.start_date)) : null
+                      const e = task.due_date   ? pct(new Date(task.due_date))   : null
+                      const w = s!==null && e!==null ? Math.max(0.5,e-s) : null
+                      const over = task.due_date && new Date(task.due_date)<today && task.status!=='completed'
                       return (
-                        <div key={task.id} style={{ display: 'grid', gridTemplateColumns: '240px 1fr', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-                          <div style={{ padding: '.5rem 1rem .5rem 1.5rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: TASK_STATUS_COLOR[task.status] ?? '#94A3B8', flexShrink: 0 }} />
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: '.8125rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isOverdue ? 'var(--danger)' : 'var(--text)' }}>
-                                {task.title}
-                              </div>
-                              {(task.estimated_hours || task.actual_hours) && (
-                                <div style={{ fontSize: '.625rem', color: 'var(--subtle)' }}>
-                                  {task.actual_hours ?? 0}h / {task.estimated_hours ?? '?'}h
-                                </div>
-                              )}
+                        <div key={task.id} style={{ display:'grid', gridTemplateColumns:`${NAME_W}px 1fr`, borderBottom:'1px solid var(--border)', background:'var(--surface)' }}>
+                          <div style={{ padding:'.4rem .875rem .4rem 1.375rem', display:'flex', alignItems:'center', gap:'.375rem' }}>
+                            <div style={{ width:7, height:7, borderRadius:'50%', background:TASK_COLOR[task.status]??'#94A3B8', flexShrink:0 }}/>
+                            <div style={{ minWidth:0 }}>
+                              <div style={{ fontSize:'.8125rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:over?'var(--danger)':'var(--text)' }}>{task.title}</div>
+                              {task.estimated_hours && <div style={{ fontSize:'.5625rem', color:'var(--subtle)' }}>{task.estimated_hours}h</div>}
                             </div>
                           </div>
-                          <div style={{ position: 'relative', height: 40 }}>
-                            {startPct !== null && width !== null && (
-                              <div style={{ position: 'absolute', left: `${startPct}%`, width: `${width}%`, top: '50%', transform: 'translateY(-50%)', height: 16, borderRadius: 4, background: task.status === 'completed' ? '#16A34A' : isOverdue ? '#DC2626' : SAP_PHASE_COLOR[ph] ?? '#0A6ED1', opacity: .85, minWidth: 4 }}>
-                                {task.progress > 0 && (
-                                  <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${task.progress}%`, background: 'rgba(255,255,255,.3)', borderRadius: 4 }} />
-                                )}
-                              </div>
-                            )}
-                            {!startPct && end && (
-                              <div style={{ position: 'absolute', left: `${endPct ?? 0}%`, top: '50%', transform: 'translate(-50%,-50%)', width: 10, height: 10, background: TASK_STATUS_COLOR[task.status], borderRadius: 2, rotate: '45deg' }} />
-                            )}
-                            <div style={{ position: 'absolute', left: `${todayPct}%`, top: 0, bottom: 0, width: 1, background: 'var(--danger)', opacity: .3 }} />
+                          <div style={{ position:'relative', height:40, background:'var(--surface)' }}>
+                            {s!==null && w!==null && <div style={{ position:'absolute', left:`${s}%`, width:`${w}%`, top:'50%', transform:'translateY(-50%)', height:14, borderRadius:4, background:task.status==='completed'?'var(--ok)':over?'var(--danger)':SAP_COLOR[ph], opacity:.85, minWidth:4 }}><div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${task.progress}%`, background:'rgba(255,255,255,.3)', borderRadius:4 }}/></div>}
+                            {s===null && e!==null && <div style={{ position:'absolute', left:`${e}%`, top:'50%', transform:'translate(-50%,-50%)', width:10, height:10, background:TASK_COLOR[task.status], borderRadius:2, rotate:'45deg' }}/>}
+                            <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1, background:'var(--danger)', opacity:.2 }}/>
                           </div>
                         </div>
                       )
@@ -236,142 +231,63 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
                 )
               })}
 
-              {/* Tasks without SAP phase */}
-              {filtered.filter(t => !t.sap_activate_phase).map(task => {
-                const start = task.start_date ? new Date(task.start_date) : null
-                const end   = task.due_date   ? new Date(task.due_date)   : null
-                const startPct = start ? Math.min(99, Math.max(0, (dayOffset(start) / totalDays) * 100)) : null
-                const endPct   = end   ? Math.min(100, Math.max(0, (dayOffset(end)   / totalDays) * 100)) : null
-                const width    = startPct !== null && endPct !== null ? Math.max(0.5, endPct - startPct) : null
-                const isOverdue = end && end < today && task.status !== 'completed'
+              {filtered.filter(t=>!t.sap_activate_phase).map(task=>{
+                const s = task.start_date ? pct(new Date(task.start_date)) : null
+                const e = task.due_date   ? pct(new Date(task.due_date))   : null
+                const w = s!==null && e!==null ? Math.max(0.5,e-s) : null
                 return (
-                  <div key={task.id} style={{ display: 'grid', gridTemplateColumns: '240px 1fr', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-                    <div style={{ padding: '.5rem 1rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: TASK_STATUS_COLOR[task.status] ?? '#94A3B8', flexShrink: 0 }} />
-                      <div style={{ fontSize: '.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isOverdue ? 'var(--danger)' : 'var(--text)' }}>{task.title}</div>
+                  <div key={task.id} style={{ display:'grid', gridTemplateColumns:`${NAME_W}px 1fr`, borderBottom:'1px solid var(--border)', background:'var(--surface)' }}>
+                    <div style={{ padding:'.4rem .875rem', display:'flex', alignItems:'center', gap:'.375rem' }}>
+                      <div style={{ width:7, height:7, borderRadius:'50%', background:TASK_COLOR[task.status]??'#94A3B8', flexShrink:0 }}/>
+                      <div style={{ fontSize:'.8125rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.title}</div>
                     </div>
-                    <div style={{ position: 'relative', height: 40 }}>
-                      {startPct !== null && width !== null && (
-                        <div style={{ position: 'absolute', left: `${startPct}%`, width: `${width}%`, top: '50%', transform: 'translateY(-50%)', height: 14, borderRadius: 4, background: isOverdue ? '#DC2626' : '#0A6ED1', opacity: .8, minWidth: 4 }} />
-                      )}
-                      <div style={{ position: 'absolute', left: `${todayPct}%`, top: 0, bottom: 0, width: 1, background: 'var(--danger)', opacity: .3 }} />
+                    <div style={{ position:'relative', height:40, background:'var(--surface)' }}>
+                      {s!==null && w!==null && <div style={{ position:'absolute', left:`${s}%`, width:`${w}%`, top:'50%', transform:'translateY(-50%)', height:14, borderRadius:4, background:'#0A6ED1', opacity:.8, minWidth:4 }}/>}
+                      <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1, background:'var(--danger)', opacity:.2 }}/>
                     </div>
                   </div>
                 )
               })}
             </div>
           </div>
-
-          {/* Legend */}
-          <div style={{ padding: '.75rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '1rem', flexWrap: 'wrap', background: 'var(--surface-2)' }}>
-            <span style={{ fontSize: '.6875rem', color: 'var(--subtle)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Legenda:</span>
-            {[
-              { color: '#16A34A', label: 'Concluído' },
-              { color: '#0A6ED1', label: 'Em andamento' },
-              { color: '#DC2626', label: 'Atrasado' },
-              { color: '#94A3B8', label: 'A fazer' },
-            ].map(l => (
-              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '.375rem', fontSize: '.75rem', color: 'var(--text-2)' }}>
-                <div style={{ width: 20, height: 8, borderRadius: 2, background: l.color }} />
-                {l.label}
+          <div style={{ padding:'.625rem 1rem', borderTop:'1px solid var(--border)', background:'var(--surface-2)', display:'flex', gap:'1rem', flexWrap:'wrap' }}>
+            {[{c:'#16A34A',l:'Concluído'},{c:'#0A6ED1',l:'Em andamento'},{c:'var(--danger)',l:'Atrasado'},{c:'#94A3B8',l:'A fazer'}].map(x=>(
+              <div key={x.l} style={{ display:'flex', alignItems:'center', gap:'.375rem', fontSize:'.6875rem' }}>
+                <div style={{ width:20, height:7, borderRadius:2, background:x.c }}/>{x.l}
               </div>
             ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.375rem', fontSize: '.75rem', color: 'var(--danger)' }}>
-              <div style={{ width: 2, height: 12, background: 'var(--danger)' }} />
-              Hoje
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.375rem', fontSize: '.75rem', color: 'var(--text-2)' }}>
-              <div style={{ width: 10, height: 10, background: '#0A6ED1', rotate: '45deg', borderRadius: 1 }} />
-              Marco
+            <div style={{ display:'flex', alignItems:'center', gap:'.375rem', fontSize:'.6875rem', color:'var(--danger)' }}>
+              <div style={{ width:2, height:12, background:'var(--danger)' }}/> Hoje
             </div>
           </div>
         </div>
       ) : (
-        /* ── LIST VIEW ───────────────────────────────────── */
         <div className="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>Tarefa</th><th>Fase SAP</th><th>Status</th>
-                <th>Início</th><th>Fim</th><th>Horas est.</th><th>Progresso</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Item</th><th>Tipo</th><th>Fase</th><th>Status</th><th>Início</th><th>Fim</th><th>%</th></tr></thead>
             <tbody>
-              {/* Milestones first */}
-              {milestones.map(m => (
-                <tr key={m.id} style={{ background: 'var(--surface-2)' }}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                      <span>🔷</span>
-                      <span style={{ fontWeight: 700, fontSize: '.875rem' }}>{m.name}</span>
-                      <span className="badge">Marco</span>
-                    </div>
-                  </td>
-                  <td>—</td>
-                  <td>
-                    <span className="badge" style={{ background: (STATUS_COLOR[m.status] ?? '#94A3B8') + '22', color: STATUS_COLOR[m.status] ?? '#94A3B8', borderColor: (STATUS_COLOR[m.status] ?? '#94A3B8') + '44' }}>
-                      {m.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td>—</td>
-                  <td style={{ fontWeight: 600, color: new Date(m.due_date) < today ? 'var(--danger)' : 'var(--text)' }}>
-                    {new Date(m.due_date).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td>—</td>
-                  <td>—</td>
+              {milestones.map(m=>(
+                <tr key={m.id} style={{ background:'var(--surface-2)' }}>
+                  <td><div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}><span>🔷</span><b>{m.name}</b></div></td>
+                  <td><span className="badge">Marco</span></td><td>—</td>
+                  <td><span className="badge">{MIL_STATUS[m.status]??m.status}</span></td><td>—</td>
+                  <td style={{ color:new Date(m.due_date)<today?'var(--danger)':'var(--text)' }}>{new Date(m.due_date).toLocaleDateString('pt-BR')}</td><td>—</td>
                 </tr>
               ))}
-              {/* Tasks */}
-              {filtered.map(task => (
-                <tr key={task.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: TASK_STATUS_COLOR[task.status] ?? '#94A3B8', flexShrink: 0 }} />
-                      <span style={{ fontSize: '.875rem', fontWeight: 500 }}>{task.title}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {task.sap_activate_phase ? (
-                      <span className="badge" style={{ background: (SAP_PHASE_COLOR[task.sap_activate_phase] ?? '#94A3B8') + '22', color: SAP_PHASE_COLOR[task.sap_activate_phase] ?? '#94A3B8' }}>
-                        {task.sap_activate_phase}
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td>
-                    <span className="badge" style={{ background: (TASK_STATUS_COLOR[task.status] ?? '#94A3B8') + '22', color: TASK_STATUS_COLOR[task.status] ?? '#94A3B8' }}>
-                      {task.status.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: '.8125rem', color: 'var(--subtle)' }}>
-                    {task.start_date ? new Date(task.start_date).toLocaleDateString('pt-BR') : '—'}
-                  </td>
-                  <td style={{ fontSize: '.8125rem', color: task.due_date && new Date(task.due_date) < today && task.status !== 'completed' ? 'var(--danger)' : 'var(--text-2)' }}>
-                    {task.due_date ? new Date(task.due_date).toLocaleDateString('pt-BR') : '—'}
-                  </td>
-                  <td style={{ fontSize: '.8125rem', color: 'var(--subtle)' }}>
-                    {task.estimated_hours ?? '—'}
-                  </td>
-                  <td>
-                    {task.progress > 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                        <div style={{ flex: 1, height: 5, background: 'var(--surface-3)', borderRadius: 99, overflow: 'hidden', minWidth: 60 }}>
-                          <div style={{ width: `${task.progress}%`, height: '100%', background: 'var(--brand)', borderRadius: 99 }} />
-                        </div>
-                        <span style={{ fontSize: '.6875rem', fontWeight: 700, color: 'var(--subtle)' }}>{task.progress}%</span>
-                      </div>
-                    ) : '—'}
-                  </td>
+              {filtered.map(t=>(
+                <tr key={t.id}>
+                  <td style={{ fontSize:'.875rem' }}>{t.title}</td>
+                  <td><span className="badge">Tarefa</span></td>
+                  <td>{t.sap_activate_phase?<span className="badge" style={{ background:(SAP_COLOR[t.sap_activate_phase]??'#94A3B8')+'22', color:SAP_COLOR[t.sap_activate_phase]??'#94A3B8' }}>{t.sap_activate_phase}</span>:'—'}</td>
+                  <td><span className="badge" style={{ background:(TASK_COLOR[t.status]??'#94A3B8')+'22', color:TASK_COLOR[t.status]??'#94A3B8' }}>{t.status.replace(/_/g,' ')}</span></td>
+                  <td style={{ fontSize:'.8125rem', color:'var(--subtle)' }}>{t.start_date?new Date(t.start_date).toLocaleDateString('pt-BR'):'—'}</td>
+                  <td style={{ fontSize:'.8125rem', color:t.due_date&&new Date(t.due_date)<today&&t.status!=='completed'?'var(--danger)':'var(--text-2)' }}>{t.due_date?new Date(t.due_date).toLocaleDateString('pt-BR'):'—'}</td>
+                  <td style={{ fontSize:'.8125rem' }}>{t.progress>0?t.progress+'%':'—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
-
-      {!loading && canEdit && (
-        <p style={{ fontSize: '.75rem', color: 'var(--subtle-2)', marginTop: '.875rem' }}>
-          💡 Para ver barras no Gantt, adicione datas de início e fim nas tarefas via Kanban.
-        </p>
       )}
     </div>
   )

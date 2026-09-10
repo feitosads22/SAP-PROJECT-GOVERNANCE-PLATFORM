@@ -1,16 +1,25 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import NotificationBell from './NotificationBell'
+import { supabase } from '../lib/supabase'
 
 type Props = { onMenuToggle: () => void }
 
 export default function AppTopbar({ onMenuToggle }: Props) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
-  const [dropOpen, setDropOpen] = useState(false)
+  const [dropOpen,    setDropOpen]    = useState(false)
+  const [notifCount,  setNotifCount]  = useState(0)
   const [search, setSearch]     = useState('')
   const dropRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!profile?.id) return
+    const sb = supabase as any
+    sb.from('notifications').select('id', { count: 'exact' })
+      .eq('user_id', profile.id).eq('read', false)
+      .then(({ count }: { count: number }) => setNotifCount(count ?? 0))
+  }, [profile?.id])
 
   const initials = profile?.full_name
     ?.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
@@ -53,7 +62,15 @@ export default function AppTopbar({ onMenuToggle }: Props) {
 
       <div className="topbar__right">
         {profile?.role !== 'customer' && (
-          <NotificationBell userId={profile?.id ?? ''} />
+          <button className="topbar__btn" onClick={() => navigate('/notificacoes')}
+          style={{ position: 'relative' }} title="Notificações">
+          🔔
+          {notifCount > 0 && (
+            <span className="topbar__notif-dot" style={{ width: 'auto', minWidth: 14, height: 14, padding: '0 3px', borderRadius: 7, fontSize: '.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', top: 4, right: 4 }}>
+              {notifCount > 9 ? '9+' : notifCount}
+            </span>
+          )}
+        </button>
         )}
 
         <div style={{ position: 'relative' }} ref={dropRef}>

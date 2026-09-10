@@ -65,6 +65,8 @@ function ScoreBar({ score }: { score: number | null }) {
             : score >= 70 ? HEALTH_CFG.attention
             : score >= 50 ? HEALTH_CFG.at_risk
             : HEALTH_CFG.critical
+
+
   return (
     <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
       <div style={{ flex:1, height:6, background:'var(--bg)', borderRadius:99, overflow:'hidden', minWidth:60 }}>
@@ -123,6 +125,8 @@ export default function PortfolioPage({ role }: { role: string }) {
   const budgetTotal = filtered.reduce((s, r) => s + r.budget_total, 0)
   const costTotal   = filtered.reduce((s, r) => s + r.cost_actual, 0)
 
+
+
   return (
     <div className="page page--wide">
       <div className="page-header">
@@ -132,6 +136,14 @@ export default function PortfolioPage({ role }: { role: string }) {
           <p className="sutil">Visão executiva de todos os projetos</p>
         </div>
         <div className="page-header__actions">
+          <button className="btn-secondary" onClick={() => {
+            const csv = ['Código;Projeto;Status;Progresso;Health'].concat(
+              rows.map((r: any) => `${r.project_code};${r.project_name};${r.project_status};${r.progress}%;${r.health_score ?? ''}`)
+            ).join('\n')
+            const a = document.createElement('a')
+            a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
+            a.download = 'portfolio.csv'; a.click()
+          }}>⬇ Exportar CSV</button>
           {canAdmin && (
             <button className="btn-outline" onClick={refreshAllScores} disabled={calculating}>
               {calculating ? 'Calculando…' : '🔄 Atualizar health scores'}
@@ -209,7 +221,9 @@ export default function PortfolioPage({ role }: { role: string }) {
               const hcfg = HEALTH_CFG[r.health_status ?? '']
               const fcfg = FIN_CFG[r.financial_status ?? '']
               const sched = r.schedule_status
-              return (
+            
+
+  return (
                 <tr key={r.project_id}>
                   <td>
                     <Link to={`/projeto/${r.project_id}`}

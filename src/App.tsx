@@ -21,6 +21,10 @@ import KnowledgePage     from './pages/KnowledgePage'
 import DemandsPage       from './pages/DemandsPage'
 import TeamManagePage    from './pages/TeamManagePage'
 import ConsultantDashboard from './pages/ConsultantDashboard'
+import SchedulePage      from './pages/SchedulePage'
+import ResourcesPage     from './pages/ResourcesPage'
+import ProfilePage       from './pages/ProfilePage'
+import SettingsPage      from './pages/SettingsPage'
 import DocumentsPage     from './pages/DocumentsPage'
 import ReportsPage       from './pages/ReportsPage'
 
@@ -70,6 +74,10 @@ function AppLayout() {
           <Route path="/documentos"             element={<DocumentsPage />} />
           <Route path="/relatorios"             element={<ReportsPage />} />
           <Route path="/equipe"                   element={<TeamManagePage role={role} />} />
+          <Route path="/recursos"                 element={<ResourcesPage role={role} />} />
+          <Route path="/cronograma/:id"           element={<SchedulePage role={role} />} />
+          <Route path="/perfil"                   element={<ProfilePage />} />
+          <Route path="/configuracoes"            element={<SettingsPage role={role} />} />
           <Route path="*"                       element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>

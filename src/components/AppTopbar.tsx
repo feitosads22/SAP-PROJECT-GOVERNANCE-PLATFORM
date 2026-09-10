@@ -16,9 +16,23 @@ export default function AppTopbar({ onMenuToggle }: Props) {
   useEffect(() => {
     if (!profile?.id) return
     const sb = supabase as any
-    sb.from('notifications').select('id', { count: 'exact' })
-      .eq('user_id', profile.id).eq('read', false)
-      .then(({ count }: { count: number }) => setNotifCount(count ?? 0))
+
+    function loadCount() {
+      sb.from('notifications').select('id', { count: 'exact', head: true })
+        .eq('user_id', profile!.id).is('read_at', null)
+        .then(({ count }: { count: number | null }) => setNotifCount(count ?? 0))
+    }
+    loadCount()
+
+    const channel = supabase
+      .channel(`topbar-notifications-${profile.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${profile.id}`,
+      }, loadCount)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [profile?.id])
 
   const initials = profile?.full_name

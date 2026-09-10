@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 type Notif = {
   id: string; title: string; body: string | null; type: string
-  read: boolean; created_at: string; project_id: string | null
+  read_at: string | null; created_at: string; project_id: string | null
   entity_type: string | null; entity_id: string | null
 }
 
@@ -66,18 +66,20 @@ export default function NotificationsPage() {
   }, [profile?.id])
 
   async function markRead(id: string) {
-    await sb.from('notifications').update({ read: true }).eq('id', id)
-    setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+    const now = new Date().toISOString()
+    await sb.from('notifications').update({ read_at: now }).eq('id', id)
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, read_at: now } : n))
   }
 
   async function markAllRead() {
+    const now = new Date().toISOString()
     await sb.from('notifications')
-      .update({ read: true }).eq('user_id', profile?.id).eq('read', false)
-    setNotifs(prev => prev.map(n => ({ ...n, read: true })))
+      .update({ read_at: now }).eq('user_id', profile?.id).is('read_at', null)
+    setNotifs(prev => prev.map(n => ({ ...n, read_at: n.read_at ?? now })))
   }
 
-  const displayed = filter === 'unread' ? notifs.filter(n => !n.read) : notifs
-  const unreadCount = notifs.filter(n => !n.read).length
+  const displayed = filter === 'unread' ? notifs.filter(n => !n.read_at) : notifs
+  const unreadCount = notifs.filter(n => !n.read_at).length
 
   return (
     <div className="page" style={{ maxWidth: 720 }}>
@@ -128,14 +130,14 @@ export default function NotificationsPage() {
             const cfg = TYPE_CFG[n.type] ?? TYPE_CFG.general
             return (
               <div key={n.id}
-                onClick={() => !n.read && markRead(n.id)}
+                onClick={() => !n.read_at && markRead(n.id)}
                 style={{
                   display: 'flex', gap: '.875rem', alignItems: 'flex-start',
-                  background: n.read ? 'var(--surface)' : cfg.bg,
-                  border: `1px solid ${n.read ? 'var(--border)' : cfg.color + '33'}`,
-                  borderLeft: `3px solid ${n.read ? 'var(--border)' : cfg.color}`,
+                  background: n.read_at ? 'var(--surface)' : cfg.bg,
+                  border: `1px solid ${n.read_at ? 'var(--border)' : cfg.color + '33'}`,
+                  borderLeft: `3px solid ${n.read_at ? 'var(--border)' : cfg.color}`,
                   borderRadius: 'var(--r-lg)', padding: '1rem',
-                  cursor: n.read ? 'default' : 'pointer',
+                  cursor: n.read_at ? 'default' : 'pointer',
                   transition: 'background .15s',
                 }}>
                 <div style={{
@@ -149,7 +151,7 @@ export default function NotificationsPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '.5rem' }}>
-                    <span style={{ fontWeight: n.read ? 500 : 700, fontSize: '.9375rem', color: 'var(--text)' }}>
+                    <span style={{ fontWeight: n.read_at ? 500 : 700, fontSize: '.9375rem', color: 'var(--text)' }}>
                       {n.title}
                     </span>
                     <span style={{ fontSize: '.6875rem', color: 'var(--subtle-2)', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -161,7 +163,7 @@ export default function NotificationsPage() {
                       {n.body}
                     </p>
                   )}
-                  {!n.read && (
+                  {!n.read_at && (
                     <div style={{ marginTop: '.375rem', display: 'flex', alignItems: 'center', gap: '.375rem' }}>
                       <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.color }} />
                       <span style={{ fontSize: '.6875rem', color: cfg.color, fontWeight: 700 }}>Nova</span>

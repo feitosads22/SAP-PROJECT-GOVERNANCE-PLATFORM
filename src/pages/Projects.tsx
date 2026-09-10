@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import CreateProjectModal from '../components/CreateProjectModal'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getProjects } from '../lib/api'
 import type { Project } from '../types/app.types'
 
@@ -23,15 +23,18 @@ type ViewMode = 'cards' | 'table'
 
 export default function Projects() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading,  setLoading]  = useState(true)
   const [erro,     setErro]     = useState<string | null>(null)
   const [view,     setView]     = useState<ViewMode>('cards')
-  const [search,   setSearch]   = useState('')
+  const [search,   setSearch]   = useState(searchParams.get('q') ?? '')
   const [filterStatus,   setFilterStatus]   = useState('')
   const [filterPriority, setFilterPriority] = useState('')
   const [filterModule,   setFilterModule]   = useState('')
   const [showCreate, setShowCreate] = useState(false)
+
+  useEffect(() => { setSearch(searchParams.get('q') ?? '') }, [searchParams])
 
   useEffect(() => {
     getProjects().then(({ data, error }) => {
@@ -47,7 +50,7 @@ export default function Projects() {
     if (filterModule   && p.sap_module !== filterModule) return false
     if (search) {
       const q = search.toLowerCase()
-      return p.name.toLowerCase().includes(q) || (p.code ?? '').toLowerCase().includes(q)
+      if (!p.name.toLowerCase().includes(q) && !(p.code ?? '').toLowerCase().includes(q)) return false
     }
     return true
   })

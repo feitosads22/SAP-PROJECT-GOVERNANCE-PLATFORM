@@ -25,6 +25,7 @@ import SchedulePage      from './pages/SchedulePage'
 import ResourcesPage     from './pages/ResourcesPage'
 import ProfilePage       from './pages/ProfilePage'
 import SettingsPage      from './pages/SettingsPage'
+import NotificationsPage from './pages/NotificationsPage'
 import DocumentsPage     from './pages/DocumentsPage'
 import ReportsPage       from './pages/ReportsPage'
 
@@ -78,6 +79,7 @@ function AppLayout() {
           <Route path="/cronograma/:id"           element={<SchedulePage role={role} />} />
           <Route path="/perfil"                   element={<ProfilePage />} />
           <Route path="/configuracoes"            element={<SettingsPage role={role} />} />
+          <Route path="/notificacoes"             element={<NotificationsPage />} />
           <Route path="*"                       element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import GlobalSearch from './GlobalSearch'
 import { supabase } from '../lib/supabase'
 
 type Props = { onMenuToggle: () => void }
@@ -10,7 +11,6 @@ export default function AppTopbar({ onMenuToggle }: Props) {
   const navigate = useNavigate()
   const [dropOpen,    setDropOpen]    = useState(false)
   const [notifCount,  setNotifCount]  = useState(0)
-  const [search, setSearch]     = useState('')
   const dropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,25 +40,11 @@ export default function AppTopbar({ onMenuToggle }: Props) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  function handleSearch(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' && search.trim()) {
-      navigate(`/?q=${encodeURIComponent(search.trim())}`)
-    }
-  }
-
   return (
     <header className="topbar">
       <button className="topbar__hamburger" onClick={onMenuToggle}>☰</button>
 
-      <div className="topbar__search">
-        <span className="topbar__search-icon">🔍</span>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          onKeyDown={handleSearch}
-          placeholder="Buscar projetos, tarefas, pessoas…"
-        />
-      </div>
+      <GlobalSearch />
 
       <div className="topbar__right">
         {profile?.role !== 'customer' && (

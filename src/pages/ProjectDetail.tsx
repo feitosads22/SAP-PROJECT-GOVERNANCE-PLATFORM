@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getProject, getTasksByProject } from '../lib/api'
 import { getProjectFinancial } from '../lib/financial'
 import { supabase } from '../lib/supabase'
+import { newReportDoc, addReportTable, footerAndSave } from '../lib/pdf'
 import type { Project, Task } from '../types/app.types'
 import type { FinancialRow } from '../lib/financial'
 import KanbanBoard from '../components/KanbanBoard'
@@ -42,6 +43,7 @@ export default function ProjectDetail({ role, userId }: Props) {
   const [tasks,    setTasks]    = useState<Task[]>([])
   const [risks,    setRisks]    = useState<Risk[]>([])
   const [issues,   setIssues]   = useState<Issue[]>([])
+  const [summary,  setSummary]  = useState<{ health_score: number | null; health_status: string | null; schedule_status: string; days_remaining: number | null } | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [erro,     setErro]     = useState<string | null>(null)
 
@@ -53,12 +55,13 @@ export default function ProjectDetail({ role, userId }: Props) {
   async function load() {
     if (!id) return
     setLoading(true)
-    const [rPrj, rFin, rTasks, rRisks, rIssues] = await Promise.all([
+    const [rPrj, rFin, rTasks, rRisks, rIssues, rSummary] = await Promise.all([
       getProject(id),
       getProjectFinancial(id),
       getTasksByProject(id),
       sb.from('project_risks').select('*').eq('project_id', id).order('score', { ascending: false }),
       sb.from('project_issues').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+      sb.from('portfolio_summary').select('health_score,health_status,schedule_status,days_remaining').eq('project_id', id).maybeSingle(),
     ])
     if (rPrj.error) setErro(rPrj.error.message)
     else setProject(rPrj.data)
@@ -66,6 +69,7 @@ export default function ProjectDetail({ role, userId }: Props) {
     if (!rTasks.error) setTasks((rTasks.data ?? []) as Task[])
     if (!rRisks.error) setRisks(rRisks.data ?? [])
     if (!rIssues.error) setIssues(rIssues.data ?? [])
+    if (!rSummary.error) setSummary(rSummary.data ?? null)
     setLoading(false)
   }
 
@@ -93,12 +97,8 @@ export default function ProjectDetail({ role, userId }: Props) {
   const tasksOpen   = tasks.filter(t => !['completed','cancelled'].includes(t.status)).length
   const risksCrit   = risks.filter(r => !['resolved','accepted'].includes(r.status) && (r.score ?? 0) >= 9).length
   const issuesOpen  = issues.filter(i => ['open','in_progress'].includes(i.status)).length
-  const healthScore: number | null = null // calculated from portfolio_summary separately
-
-  // Health (from portfolio_summary if available, else rough calc)
-  const healthStatus = healthScore != null
-    ? healthScore >= 85 ? 'healthy' : healthScore >= 70 ? 'attention' : healthScore >= 50 ? 'at_risk' : 'critical'
-    : null
+  const healthScore = summary?.health_score ?? null
+  const healthStatus = summary?.health_status ?? null
 
   const RISK_SCORE_COLOR = (s: number) =>
     s >= 12 ? '#7C3AED' : s >= 9 ? '#DC2626' : s >= 6 ? '#F59E0B' : '#16A34A'
@@ -154,6 +154,29 @@ type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'docum
           </div>
 
           <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', alignItems:'center' }}>
+            {role !== 'customer' && (
+              <button className="btn-secondary" onClick={() => {
+                const doc = newReportDoc(`Relatório de Status — ${project.name}`, `${project.code} · gerado em ${new Date().toLocaleDateString('pt-BR')}`)
+                addReportTable(doc, ['Indicador', 'Valor'], [
+                  ['Status', STATUS_LABEL[project.status] ?? project.status],
+                  ['Progresso', `${project.progress}%`],
+                  ['Health score', healthScore != null ? `${healthScore} (${healthStatus === 'healthy' ? 'Saudável' : healthStatus === 'attention' ? 'Atenção' : healthStatus === 'at_risk' ? 'Em risco' : healthStatus === 'critical' ? 'Crítico' : '—'})` : '—'],
+                  ['Prazo', summary?.schedule_status === 'atrasado' ? 'Atrasado' : summary?.days_remaining != null ? `${summary.days_remaining} dia(s) restante(s)` : '—'],
+                  ['Budget total', brl(fin?.budget_total)],
+                  ['Custo realizado', brl(fin?.cost_actual_total)],
+                  ['Tarefas concluídas', `${tasksDone}/${tasksDone + tasksOpen}`],
+                  ['Riscos críticos', String(risksCrit)],
+                  ['Issues abertas', String(issuesOpen)],
+                ], 45)
+                if (risks.length > 0) {
+                  addReportTable(doc, ['Risco', 'Probabilidade', 'Impacto', 'Score', 'Status'],
+                    risks.map(r => [r.title, PROB_LABEL[r.probability] ?? r.probability, IMPACT_LABEL[r.impact] ?? r.impact, r.score ?? '—', r.status]),
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    ((doc as any).lastAutoTable?.finalY ?? 45) + 10)
+                }
+                footerAndSave(doc, `status_${project.code}_${new Date().toISOString().slice(0, 10)}.pdf`)
+              }}>📄 Relatório PDF</button>
+            )}
             {canEdit && (
               <>
                 <button className="btn-secondary" onClick={() => { setTab('financial') }}>💰 Financeiro</button>

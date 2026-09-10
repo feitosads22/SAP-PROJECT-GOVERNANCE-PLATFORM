@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { newReportDoc, addReportTable, footerAndSave } from '../lib/pdf'
 
 type PortfolioRow = {
   project_id: string
@@ -144,6 +145,19 @@ export default function PortfolioPage({ role }: { role: string }) {
             a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
             a.download = 'portfolio.csv'; a.click()
           }}>⬇ Exportar CSV</button>
+          <button className="btn-secondary" onClick={() => {
+            const doc = newReportDoc('Relatório de Portfólio', `${filtered.length} projeto(s) · gerado a partir dos filtros ativos`)
+            addReportTable(doc,
+              ['Código', 'Projeto', 'Status', 'Health', 'Progresso', 'Budget', 'Custo', 'Riscos crít.', 'Issues', 'CRs', 'Prazo'],
+              filtered.map(r => [
+                r.project_code, r.project_name, STATUS_LABEL[r.project_status] ?? r.project_status,
+                r.health_score != null ? `${r.health_score} (${HEALTH_CFG[r.health_status ?? '']?.label ?? '—'})` : '—',
+                `${r.progress}%`, brl(r.budget_total), brl(r.cost_actual),
+                r.risks_critical, r.issues_open, r.crs_pending,
+                r.schedule_status === 'atrasado' ? 'Atrasado' : r.days_remaining != null ? `${r.days_remaining}d` : '—',
+              ]))
+            footerAndSave(doc, `portfolio_${new Date().toISOString().slice(0, 10)}.pdf`)
+          }}>📄 Exportar PDF</button>
           {canAdmin && (
             <button className="btn-outline" onClick={refreshAllScores} disabled={calculating}>
               {calculating ? 'Calculando…' : '🔄 Atualizar health scores'}

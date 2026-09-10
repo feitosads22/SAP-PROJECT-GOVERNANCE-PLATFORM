@@ -4,6 +4,7 @@ import { getProjects } from '../lib/api'
 import { getMyResource, getTimesheets, createTimesheet, approveTimesheet, rejectTimesheet } from '../lib/resources'
 import type { Timesheet } from '../lib/resources'
 import { toast } from '../components/Toast'
+import { newReportDoc, addReportTable, footerAndSave } from '../lib/pdf'
 import type { Project, Task } from '../types/app.types'
 
 type TS = Timesheet & {
@@ -64,8 +65,9 @@ export default function TimesheetPage({ userId, role }: Props) {
   const [myResourceId, setMyResourceId] = useState<string | null>(null)
   const [resourceLoading, setResourceLoading] = useState(true)
   const [loading,    setLoading]    = useState(true)
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterProj,   setFilterProj]   = useState('')
+  const [filterStatus,   setFilterStatus]   = useState('')
+  const [filterProj,     setFilterProj]     = useState('')
+  const [filterResource, setFilterResource] = useState('')
   const [range,       setRange]       = useState<Range>('mes')
   const [customStart, setCustomStart] = useState(monthStart())
   const [customEnd,   setCustomEnd]   = useState(monthEnd())
@@ -74,6 +76,7 @@ export default function TimesheetPage({ userId, role }: Props) {
   const [rejecting,  setRejecting]  = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [showReport, setShowReport] = useState(false)
+  const [resourceOptions, setResourceOptions] = useState<[string, string][]>([])
   // form
   const [fDate,  setFDate]  = useState(toISODate(new Date()))
   const [fHours, setFHours] = useState('8')
@@ -101,7 +104,13 @@ export default function TimesheetPage({ userId, role }: Props) {
     const { data, error } = await getTimesheets(filters)
     if (error) { toast(extractError(error), 'error'); setLoading(false); return }
     let rows = (data ?? []) as TS[]
+    if (isManager) {
+      setResourceOptions(Array.from(
+        new Map(rows.filter(t => t.resource?.profile?.full_name).map(t => [t.resource_id as string, t.resource!.profile!.full_name!])).entries(),
+      ))
+    }
     if (filterStatus) rows = rows.filter(t => tsStatus(t) === filterStatus)
+    if (filterResource) rows = rows.filter(t => t.resource_id === filterResource)
     setTimesheets(rows)
     setLoading(false)
   }
@@ -125,7 +134,7 @@ export default function TimesheetPage({ userId, role }: Props) {
     if (resourceLoading) return
     void load(myResourceId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resourceLoading, myResourceId, filterStatus, filterProj, range, customStart, customEnd])
+  }, [resourceLoading, myResourceId, filterStatus, filterProj, filterResource, range, customStart, customEnd])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -195,6 +204,21 @@ export default function TimesheetPage({ userId, role }: Props) {
   })
   const projectRows = Object.values(byProject).sort((a, b) => b.total - a.total)
 
+  // Relatório de horas por recurso (só faz sentido para quem vê todos os apontamentos)
+  type ResRow = { resourceId: string; name: string; total: number; aprov: number; pend: number; rej: number }
+  const byResource: Record<string, ResRow> = {}
+  timesheets.forEach(t => {
+    const rid = t.resource_id ?? '—'
+    if (!byResource[rid]) byResource[rid] = { resourceId: rid, name: t.resource?.profile?.full_name ?? 'Desconhecido', total: 0, aprov: 0, pend: 0, rej: 0 }
+    const row = byResource[rid]
+    row.total += Number(t.hours)
+    const st = tsStatus(t)
+    if (st === 'approved') row.aprov += Number(t.hours)
+    else if (st === 'submitted') row.pend += Number(t.hours)
+    else row.rej += Number(t.hours)
+  })
+  const resourceRows = Object.values(byResource).sort((a, b) => b.total - a.total)
+
   function exportProjectCsv() {
     const { start, end } = currentRange()
     const lines = [
@@ -205,6 +229,34 @@ export default function TimesheetPage({ userId, role }: Props) {
     a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(lines)
     a.download = `horas_por_projeto_${start}_a_${end}.csv`
     a.click()
+  }
+
+  function exportResourceCsv() {
+    const { start, end } = currentRange()
+    const lines = [
+      'Recurso;Total (h);Aprovadas (h);Pendentes (h);Rejeitadas (h)',
+      ...resourceRows.map(r => `${r.name};${r.total.toFixed(1)};${r.aprov.toFixed(1)};${r.pend.toFixed(1)};${r.rej.toFixed(1)}`),
+    ].join('\n')
+    const a = document.createElement('a')
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(lines)
+    a.download = `horas_por_recurso_${start}_a_${end}.csv`
+    a.click()
+  }
+
+  function exportPdf() {
+    const { start, end } = currentRange()
+    const doc = newReportDoc('Relatório de Horas', `Período: ${fmtDate(start)} a ${fmtDate(end)}`)
+    addReportTable(doc, ['Projeto', 'Total (h)', 'Aprovadas', 'Pendentes', 'Rejeitadas'],
+      projectRows.map(r => [r.name, r.total.toFixed(1), r.aprov.toFixed(1), r.pend.toFixed(1), r.rej.toFixed(1)]))
+    if (isManager && resourceRows.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const finalY = ((doc as any).lastAutoTable?.finalY ?? 45) + 10
+      doc.setFontSize(11); doc.text('Horas por recurso', 10, finalY)
+      addReportTable(doc, ['Recurso', 'Total (h)', 'Aprovadas', 'Pendentes', 'Rejeitadas'],
+        resourceRows.map(r => [r.name, r.total.toFixed(1), r.aprov.toFixed(1), r.pend.toFixed(1), r.rej.toFixed(1)]),
+        finalY + 5)
+    }
+    footerAndSave(doc, `horas_${start}_a_${end}.pdf`)
   }
 
   return (
@@ -316,13 +368,19 @@ export default function TimesheetPage({ userId, role }: Props) {
           {Object.entries(STATUS_CFG).map(([v, c]) => <option key={v} value={v}>{c.label}</option>)}
         </select>
         {isManager && (
-          <select value={filterProj} onChange={e => setFilterProj(e.target.value)} style={{ width: 'auto', fontSize: '.8125rem' }}>
-            <option value="">Todos os projetos</option>
-            {projects.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
-          </select>
+          <>
+            <select value={filterProj} onChange={e => setFilterProj(e.target.value)} style={{ width: 'auto', fontSize: '.8125rem' }}>
+              <option value="">Todos os projetos</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
+            </select>
+            <select value={filterResource} onChange={e => setFilterResource(e.target.value)} style={{ width: 'auto', fontSize: '.8125rem' }}>
+              <option value="">Todos os recursos</option>
+              {resourceOptions.map(([rid, name]) => <option key={rid} value={rid}>{name}</option>)}
+            </select>
+          </>
         )}
-        {(filterStatus || filterProj) && (
-          <button className="btn-ghost btn-sm" onClick={() => { setFilterStatus(''); setFilterProj('') }}>Limpar</button>
+        {(filterStatus || filterProj || filterResource) && (
+          <button className="btn-ghost btn-sm" onClick={() => { setFilterStatus(''); setFilterProj(''); setFilterResource('') }}>Limpar</button>
         )}
         <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--subtle)' }}>{timesheets.length} registro{timesheets.length !== 1 ? 's' : ''}</span>
       </div>
@@ -333,7 +391,8 @@ export default function TimesheetPage({ userId, role }: Props) {
           <span className="card__title">📊 Relatório de horas por projeto</span>
           <div style={{ display: 'flex', gap: '.5rem' }}>
             <button className="btn-ghost btn-sm" onClick={() => setShowReport(v => !v)}>{showReport ? 'Ocultar' : 'Mostrar'}</button>
-            <button className="btn-secondary btn-sm" onClick={exportProjectCsv} disabled={projectRows.length === 0}>⬇ Exportar CSV</button>
+            <button className="btn-secondary btn-sm" onClick={exportProjectCsv} disabled={projectRows.length === 0}>⬇ CSV</button>
+            <button className="btn-secondary btn-sm" onClick={exportPdf} disabled={projectRows.length === 0}>📄 PDF</button>
           </div>
         </div>
         {showReport && (
@@ -363,6 +422,42 @@ export default function TimesheetPage({ userId, role }: Props) {
           </div>
         )}
       </div>
+
+      {/* Relatório de horas por recurso (gestores) */}
+      {isManager && (
+        <div className="card" style={{ marginBottom: '1.25rem' }}>
+          <div className="card__header">
+            <span className="card__title">🧑‍💼 Relatório de horas por recurso</span>
+            <button className="btn-secondary btn-sm" onClick={exportResourceCsv} disabled={resourceRows.length === 0}>⬇ CSV</button>
+          </div>
+          {showReport && (
+            <div className="card__body" style={{ padding: 0 }}>
+              {resourceRows.length === 0 ? (
+                <p className="empty-state__desc" style={{ padding: '1rem 1.25rem' }}>Nenhum apontamento no período selecionado.</p>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Recurso</th><th>Total</th><th>Aprovadas</th><th>Pendentes</th><th>Rejeitadas</th></tr>
+                    </thead>
+                    <tbody>
+                      {resourceRows.map(r => (
+                        <tr key={r.resourceId}>
+                          <td>{r.name}</td>
+                          <td style={{ fontWeight: 700 }}>{r.total.toFixed(1)}h</td>
+                          <td style={{ color: 'var(--ok)' }}>{r.aprov.toFixed(1)}h</td>
+                          <td style={{ color: 'var(--warn)' }}>{r.pend.toFixed(1)}h</td>
+                          <td style={{ color: 'var(--danger)' }}>{r.rej.toFixed(1)}h</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Lista agrupada por semana */}
       {loading ? (

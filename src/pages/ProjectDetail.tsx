@@ -7,6 +7,7 @@ import type { Project, Task } from '../types/app.types'
 import type { FinancialRow } from '../lib/financial'
 import KanbanBoard from '../components/KanbanBoard'
 import ProjectDocuments from './ProjectDocuments'
+import SchedulePage from './SchedulePage'
 import BudgetPage from './BudgetPage'
 import GovernancePage from './GovernancePage'
 import CustomerManagePage from './CustomerManagePage'
@@ -104,7 +105,7 @@ export default function ProjectDetail({ role, userId }: Props) {
   const IMPACT_LABEL: Record<string,string> = { low:'Baixo', medium:'Médio', high:'Alto', critical:'Crítico' }
   const ISSUE_STATUS: Record<string,string> = { open:'Aberta', in_progress:'Em andamento', resolved:'Resolvida', closed:'Fechada', cancelled:'Cancelada' }
 
-type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'documentos'|'documentos'
+type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'documentos'|'cronograma'|'documentos'
   const TABS: { id: Tab; label: string; icon: string; roles?: string[] }[] = [
     { id:'overview',   label:'Visão Geral',  icon:'📊' },
     { id:'tasks',      label:'Tarefas',       icon:'✓' },
@@ -112,7 +113,8 @@ type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'docum
     { id:'financial',  label:'Financeiro',    icon:'💰', roles:['admin','manager','consultant'] },
     { id:'governance', label:'Governança',    icon:'🛡️', roles:['admin','manager','consultant'] },
     { id:'clientes',   label:'Clientes',      icon:'👥', roles:['admin','manager'] },
-    { id:'documentos', label:'Documentos',     icon:'📁' },
+    { id:'documentos',  label:'Documentos',    icon:'📁' },
+    { id:'cronograma', label:'Cronograma',    icon:'📅' },
   ]
 
   return (
@@ -321,7 +323,10 @@ type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'docum
       {tab === 'documentos' && (
         <ProjectDocuments projectId={project.id} role={role} />
       )}
+
+      {tab === 'cronograma' && (
+        <SchedulePage projectId={project.id} role={role} />
+      )}
     </div>
   )
 }
-

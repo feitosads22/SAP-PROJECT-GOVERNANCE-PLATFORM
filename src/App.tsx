@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { configuracaoOk } from './lib/supabase'
 import AppSidebar from './components/AppSidebar'
@@ -26,6 +26,8 @@ import ResourcesPage     from './pages/ResourcesPage'
 import ProfilePage       from './pages/ProfilePage'
 import SettingsPage      from './pages/SettingsPage'
 import NotificationsPage from './pages/NotificationsPage'
+import ToastContainer from './components/Toast'
+import NotFound from './pages/NotFound'
 import DocumentsPage     from './pages/DocumentsPage'
 import ReportsPage       from './pages/ReportsPage'
 
@@ -80,12 +82,13 @@ function AppLayout() {
           <Route path="/perfil"                   element={<ProfilePage />} />
           <Route path="/configuracoes"            element={<SettingsPage role={role} />} />
           <Route path="/notificacoes"             element={<NotificationsPage />} />
-          <Route path="*"                       element={<Navigate to="/dashboard" replace />} />
+          <Route path="*"                       element={<NotFound />} />
         </Routes>
       </div>
     </div>
   )
 }
+
 
 export default function Root() {
   if (!configuracaoOk) return <ErroConfiguracao />
@@ -93,6 +96,7 @@ export default function Root() {
     <BrowserRouter>
       <AuthProvider>
         <AppLayout />
+        <ToastContainer />
       </AuthProvider>
     </BrowserRouter>
   )

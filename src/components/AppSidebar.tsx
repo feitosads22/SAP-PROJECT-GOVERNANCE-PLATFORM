@@ -22,7 +22,9 @@ const NAV = [
     { to:'/knowledge',   label:'IA & Conhec.', icon:'🤖', roles:['admin','manager','consultant'] },
   ]},
   { group:'admin', label:'Administração', items:[
-    { to:'/equipe', label:'Usuários & Perfis', icon:'👤', roles:['admin','manager'] },
+    { to:'/equipe',        label:'Usuários & Perfis', icon:'👤', roles:['admin','manager'] },
+    { to:'/recursos',      label:'Recursos',          icon:'🧑‍💼', roles:['admin','manager'] },
+    { to:'/configuracoes', label:'Configurações',      icon:'⚙️', roles:['admin'] },
   ]},
   { group:'cliente', label:'Cliente', items:[
     { to:'/portal-cliente', label:'Meus Projetos', icon:'🏢', roles:['customer'] },

@@ -9,6 +9,7 @@ import KanbanBoard from '../components/KanbanBoard'
 import ProjectDocuments from './ProjectDocuments'
 import SchedulePage from './SchedulePage'
 import BudgetPage from './BudgetPage'
+import EditProjectModal from '../components/EditProjectModal'
 import GovernancePage from './GovernancePage'
 import CustomerManagePage from './CustomerManagePage'
 
@@ -45,6 +46,7 @@ export default function ProjectDetail({ role, userId }: Props) {
   const [erro,     setErro]     = useState<string | null>(null)
 
   const canEdit = role === 'admin' || role === 'manager'
+  const [showEdit, setShowEdit] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
@@ -322,6 +324,14 @@ type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'docum
 
       {tab === 'documentos' && (
         <ProjectDocuments projectId={project.id} role={role} />
+      )}
+
+      {showEdit && project && (
+        <EditProjectModal
+          project={project}
+          onClose={() => setShowEdit(false)}
+          onSaved={p => { setProject(p); setShowEdit(false) }}
+        />
       )}
 
       {tab === 'cronograma' && (

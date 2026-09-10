@@ -71,13 +71,24 @@ export default function TeamManagePage({ role: userRole }: Props) {
     e.preventDefault()
     if (!email.trim()) return
     setSaving(true); setErro(null)
-    const { error } = await sb.from('profiles').upsert({
-      email: email.trim().toLowerCase(),
-      full_name: fullName.trim() || null,
-      role: newRole,
-      organization_id: profile?.organization_id,
-    }, { onConflict: 'email' })
-    if (error) { setErro(error.message); setSaving(false); return }
+    // Verifica se já existe perfil com esse email
+    const { data: existing } = await sb.from('profiles')
+      .select('id').eq('email', email.trim().toLowerCase()).maybeSingle()
+    if (existing) {
+      // Atualiza role se já existe
+      const { error } = await sb.from('profiles').update({ role: newRole })
+        .eq('id', existing.id)
+      if (error) throw error
+    } else {
+      // Cria novo perfil (usuário precisará fazer signup com esse email)
+      const { error } = await sb.from('profiles').insert({
+        email: email.trim().toLowerCase(),
+        full_name: fullName.trim() || null,
+        role: newRole,
+        organization_id: profile?.organization_id,
+      })
+      if (error) throw error
+    }
     setEmail(''); setFullName(''); setNewRole('consultant')
     setShowForm(false); void loadAll()
     setSaving(false)

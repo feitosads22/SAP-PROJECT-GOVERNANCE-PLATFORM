@@ -67,9 +67,53 @@ export async function getAllocationsByProject(projectId: string) {
     .eq('project_id', projectId)
 }
 
-export async function createAllocation(data: Database['public']['Tables']['resource_allocations']['Insert']) {
+// Alocações ativas de um recurso específico (para o dashboard do consultor)
+export async function getAllocationsByResource(resourceId: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any)
+    .from('resource_allocations')
+    .select(`*, project:projects(id, name, code)`)
+    .eq('resource_id', resourceId)
+}
+
+// Todas as alocações da organização (para a tela de gestão de recursos)
+export async function getAllocations() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any)
+    .from('resource_allocations')
+    .select(`
+      *,
+      resource:resources(id, profile:profiles(id, full_name, email)),
+      project:projects(id, name, code)
+    `)
+    .order('start_date', { ascending: false })
+}
+
+type AllocationInsert = Omit<Database['public']['Tables']['resource_allocations']['Insert'], 'organization_id'> & {
+  organization_id?: string
+}
+export async function createAllocation(data: AllocationInsert) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (supabase as any).from('resource_allocations').insert(data).select().single()
+}
+
+export async function deleteAllocation(id: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any).from('resource_allocations').delete().eq('id', id)
+}
+
+// Perfis (não-cliente) que ainda não têm um recurso vinculado
+export async function getAllocatableProfiles() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const [{ data: profiles, error: pErr }, { data: resources, error: rErr }] = await Promise.all([
+    sb.from('profiles').select('id, full_name, email, role').neq('role', 'customer').order('full_name'),
+    sb.from('resources').select('profile_id'),
+  ])
+  if (pErr) return { data: null, error: pErr }
+  if (rErr) return { data: null, error: rErr }
+  const linked = new Set((resources ?? []).map((r: { profile_id: string }) => r.profile_id))
+  return { data: (profiles ?? []).filter((p: { id: string }) => !linked.has(p.id)), error: null }
 }
 
 // ── Timesheets ────────────────────────────────────────────────────────
@@ -112,8 +156,9 @@ export async function approveTimesheet(id: string, approverId: string) {
 }
 
 // ── My resource (para o consultant saber seu resource_id) ─────────────
-export async function getMyResource(profileId: string) {
-  return supabase
+export async function getMyResource(profileId: string): Promise<{ data: Resource | null; error: unknown }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any)
     .from('resources')
     .select('*')
     .eq('profile_id', profileId)

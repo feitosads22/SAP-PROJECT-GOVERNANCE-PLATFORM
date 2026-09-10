@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import {
+  getResources, createResource, getCapacity,
+  getAllocations, createAllocation, deleteAllocation, getAllocatableProfiles,
+} from '../lib/resources'
+import type { Resource, ResourceAllocation, CapacityRow } from '../lib/resources'
 import { getProjects } from '../lib/api'
+import { toast } from '../components/Toast'
 import type { Project } from '../types/app.types'
 
-type Resource = {
-  id: string; name: string; email: string | null; role: string | null
-  seniority: string | null; hourly_rate: number | null
-  monthly_hours_available: number; is_active: boolean
-}
-type Allocation = {
-  id: string; resource_id: string; project_id: string
-  start_date: string; end_date: string | null
-  allocated_hours_month: number; role_in_project: string | null
+type ProfileMini = { id: string; full_name: string | null; email: string | null; role?: string }
+type ResourceRow = Resource & { profile: ProfileMini | null }
+type AllocationRow = ResourceAllocation & {
+  resource: { id: string; profile: ProfileMini | null } | null
+  project: { id: string; name: string; code: string } | null
 }
 
 const SENIORITY_LABEL: Record<string, string> = {
@@ -21,94 +22,146 @@ const SENIORITY_COLOR: Record<string, string> = {
   junior: '#94A3B8', pleno: '#3B82F6', senior: '#8B5CF6', especialista: '#F59E0B',
 }
 
+function extractError(err: unknown): string {
+  if (!err) return 'Erro desconhecido.'
+  if (typeof err === 'string') return err
+  if (typeof err === 'object') {
+    const e = err as Record<string, unknown>
+    if (typeof e['message'] === 'string') return e['message']
+  }
+  return 'Erro desconhecido.'
+}
+
 type Props = { role: string }
 
 export default function ResourcesPage({ role }: Props) {
-  const [resources,    setResources]    = useState<Resource[]>([])
-  const [allocations,  setAllocations]  = useState<Allocation[]>([])
-  const [projects,     setProjects]     = useState<Project[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [search,       setSearch]       = useState('')
-  const [showForm,     setShowForm]     = useState(false)
-  const [saving,       setSaving]       = useState(false)
-  const [erro,         setErro]         = useState<string | null>(null)
+  const [resources,   setResources]   = useState<ResourceRow[]>([])
+  const [capacity,    setCapacity]    = useState<CapacityRow[]>([])
+  const [allocations, setAllocations] = useState<AllocationRow[]>([])
+  const [projects,    setProjects]    = useState<Project[]>([])
+  const [availableProfiles, setAvailableProfiles] = useState<ProfileMini[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [search,   setSearch]   = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [erro,     setErro]     = useState<string | null>(null)
+  const [allocatingFor, setAllocatingFor] = useState<string | null>(null)
+  const [aSaving,  setASaving]  = useState(false)
 
-  // Form
-  const [fName,     setFName]     = useState('')
-  const [fEmail,    setFEmail]    = useState('')
-  const [fRole,     setFRole]     = useState('')
-  const [fSeniority,setFSeniority]= useState('pleno')
-  const [fHours,    setFHours]    = useState('160')
-  const [fRate,     setFRate]     = useState('')
+  // Form — novo recurso
+  const [fProfileId, setFProfileId] = useState('')
+  const [fSeniority, setFSeniority] = useState('pleno')
+  const [fModules,   setFModules]   = useState('')
+  const [fHours,     setFHours]     = useState('40')
+  const [fRate,      setFRate]      = useState('')
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sb = supabase as any
+  // Form — alocar a projeto
+  const [aProject, setAProject] = useState('')
+  const [aRole,    setARole]    = useState('')
+  const [aHours,   setAHours]   = useState('160')
+  const [aStart,   setAStart]   = useState(new Date().toISOString().slice(0, 10))
+  const [aEnd,     setAEnd]     = useState('')
+
   const canEdit = ['admin', 'manager'].includes(role)
 
   async function load() {
     setLoading(true)
-    const [rR, rA, rP] = await Promise.all([
-      sb.from('resources').select('*').order('name'),
-      sb.from('resource_allocations').select('*'),
-      getProjects(),
+    const [rR, rC, rA, rP] = await Promise.all([
+      getResources(), getCapacity(), getAllocations(), getProjects(),
     ])
-    if (!rR.error) setResources(rR.data ?? [])
-    if (!rA.error) setAllocations(rA.data ?? [])
+    if (!rR.error) setResources((rR.data ?? []) as ResourceRow[])
+    if (!rC.error) setCapacity((rC.data ?? []) as CapacityRow[])
+    if (!rA.error) setAllocations((rA.data ?? []) as AllocationRow[])
     if (!rP.error) setProjects(rP.data ?? [])
     setLoading(false)
   }
 
   useEffect(() => { void load() }, [])
 
+  function toggleForm() {
+    setShowForm(v => {
+      const next = !v
+      if (next) {
+        void getAllocatableProfiles().then(({ data, error }) => {
+          if (error) toast(extractError(error), 'error')
+          else setAvailableProfiles((data ?? []) as ProfileMini[])
+        })
+      }
+      return next
+    })
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!fName.trim()) return
+    if (!fProfileId) return
     setSaving(true); setErro(null)
-    const { error } = await sb.from('resources').insert({
-      name: fName.trim(),
-      email: fEmail.trim() || null,
-      role: fRole.trim() || null,
+    const { error } = await createResource({
+      profile_id: fProfileId,
       seniority: fSeniority,
-      monthly_hours_available: parseInt(fHours) || 160,
+      sap_modules: fModules.split(',').map(s => s.trim()).filter(Boolean),
       hourly_rate: fRate ? parseFloat(fRate) : null,
-      is_active: true,
+      weekly_capacity_hours: parseFloat(fHours) || 40,
     })
-    if (error) { setErro(error.message); setSaving(false); return }
-    setFName(''); setFEmail(''); setFRole(''); setFSeniority('pleno'); setFHours('160'); setFRate('')
+    if (error) { setErro(extractError(error)); setSaving(false); return }
+    toast('Recurso cadastrado!', 'ok')
+    setFProfileId(''); setFSeniority('pleno'); setFModules(''); setFHours('40'); setFRate('')
     setShowForm(false); void load()
     setSaving(false)
   }
 
-  const filtered = resources.filter(r =>
-    !search || r.name.toLowerCase().includes(search.toLowerCase()) ||
-    (r.role ?? '').toLowerCase().includes(search.toLowerCase())
-  )
-
-  const projMap = Object.fromEntries(projects.map(p => [p.id, p]))
-
-  function utilization(resource: Resource) {
-    const month = new Date().getMonth()
-    const year  = new Date().getFullYear()
-    const active = allocations.filter(a => {
-      if (a.resource_id !== resource.id) return false
-      const start = new Date(a.start_date)
-      const end   = a.end_date ? new Date(a.end_date) : new Date(year + 1, 0, 1)
-      return start.getMonth() <= month && start.getFullYear() <= year &&
-             end.getMonth() >= month && end.getFullYear() >= year
-    })
-    const totalAllocated = active.reduce((s, a) => s + a.allocated_hours_month, 0)
-    const pct = resource.monthly_hours_available > 0
-      ? Math.round(totalAllocated / resource.monthly_hours_available * 100)
-      : 0
-    return { totalAllocated, pct, active }
+  function openAllocate(resourceId: string) {
+    setAllocatingFor(v => v === resourceId ? null : resourceId)
+    setAProject(''); setARole(''); setAHours('160')
+    setAStart(new Date().toISOString().slice(0, 10)); setAEnd('')
   }
 
-  // KPIs
-  const activeResources  = resources.filter(r => r.is_active).length
-  const totalCapacity    = resources.filter(r => r.is_active).reduce((s, r) => s + r.monthly_hours_available, 0)
-  const totalAllocated   = resources.filter(r => r.is_active).reduce((s, r) => s + utilization(r).totalAllocated, 0)
-  const avgUtil          = totalCapacity > 0 ? Math.round(totalAllocated / totalCapacity * 100) : 0
-  const overloaded       = resources.filter(r => r.is_active && utilization(r).pct > 100).length
+  async function handleAllocate(e: React.FormEvent, resourceId: string) {
+    e.preventDefault()
+    if (!aProject || !aHours) return
+    setASaving(true)
+    const { error } = await createAllocation({
+      resource_id: resourceId,
+      project_id: aProject,
+      role_in_project: aRole.trim() || null,
+      allocated_hours: parseFloat(aHours),
+      start_date: aStart || null,
+      end_date: aEnd || null,
+    })
+    if (error) toast(extractError(error), 'error')
+    else { toast('Recurso alocado ao projeto!', 'ok'); setAllocatingFor(null); void load() }
+    setASaving(false)
+  }
+
+  async function handleEndAllocation(id: string) {
+    if (!confirm('Encerrar esta alocação?')) return
+    const { error } = await deleteAllocation(id)
+    if (error) toast(extractError(error), 'error')
+    else { toast('Alocação encerrada.', 'warn'); void load() }
+  }
+
+  const filtered = resources.filter(r => {
+    const name = (r.profile?.full_name ?? r.profile?.email ?? '').toLowerCase()
+    return !search || name.includes(search.toLowerCase())
+  })
+
+  const capByResource = Object.fromEntries(capacity.map(c => [c.resource_id, c]))
+  const allocsByResource: Record<string, AllocationRow[]> = {}
+  allocations.forEach(a => {
+    if (!a.resource_id) return
+    if (!allocsByResource[a.resource_id]) allocsByResource[a.resource_id] = []
+    allocsByResource[a.resource_id].push(a)
+  })
+  const today = new Date().toISOString().slice(0, 10)
+  const isActiveAlloc = (a: AllocationRow) =>
+    (!a.start_date || a.start_date <= today) && (!a.end_date || a.end_date >= today)
+
+  // KPIs — a partir da view resource_capacity (mesma fonte da tela de Capacidade)
+  const activeResources = resources.filter(r => r.is_active).length
+  const totalCapacity   = capacity.reduce((s, c) => s + c.weekly_capacity_hours, 0)
+  const totalAllocated  = capacity.reduce((s, c) => s + c.total_allocated_hours, 0)
+  const avgUtil         = capacity.length
+    ? Math.round(capacity.reduce((s, c) => s + c.utilization_pct, 0) / capacity.length) : 0
+  const overloaded      = capacity.filter(c => c.capacity_status === 'overload').length
 
   return (
     <div className="page">
@@ -116,11 +169,11 @@ export default function ResourcesPage({ role }: Props) {
         <div>
           <div className="page-header__eyebrow">Execução</div>
           <h1>Gestão de Recursos</h1>
-          <p className="page-header__sub">Capacidade e alocação da equipe</p>
+          <p className="page-header__sub">Capacidade, alocação e horas da equipe</p>
         </div>
         {canEdit && (
           <div className="page-header__actions">
-            <button onClick={() => setShowForm(v => !v)}>
+            <button onClick={toggleForm}>
               {showForm ? '✕ Cancelar' : '+ Novo recurso'}
             </button>
           </div>
@@ -130,12 +183,12 @@ export default function ResourcesPage({ role }: Props) {
       {/* KPIs */}
       <div className="kpi-grid" style={{ marginBottom: '1.5rem' }}>
         {[
-          { icon: '👥', cls: 'brand',  label: 'Recursos ativos',    val: activeResources },
-          { icon: '⏱',  cls: 'info',   label: 'Capacidade total/mês',val: `${totalCapacity}h` },
-          { icon: '📊', cls: 'ok',     label: 'Horas alocadas/mês',  val: `${totalAllocated}h` },
+          { icon: '👥', cls: 'brand', label: 'Recursos ativos',        val: activeResources },
+          { icon: '⏱',  cls: 'info',  label: 'Capacidade total/semana', val: `${totalCapacity}h` },
+          { icon: '📊', cls: 'ok',    label: 'Horas alocadas',          val: `${totalAllocated}h` },
           { icon: '📈', cls: avgUtil > 90 ? 'danger' : avgUtil > 70 ? 'warn' : 'ok',
-            label: 'Utilização média', val: `${avgUtil}%` },
-          { icon: '⚠️', cls: 'danger', label: 'Sobrecarregados',     val: overloaded },
+            label: 'Utilização média (semana)', val: `${avgUtil}%` },
+          { icon: '⚠️', cls: 'danger', label: 'Sobrecarregados',        val: overloaded },
         ].map(k => (
           <div key={k.label} className="kpi-card">
             <div className="kpi-card__top">
@@ -149,7 +202,7 @@ export default function ResourcesPage({ role }: Props) {
         ))}
       </div>
 
-      {/* Form */}
+      {/* Form — novo recurso */}
       {showForm && canEdit && (
         <div className="card" style={{ marginBottom: '1.25rem' }}>
           <div className="card__header">
@@ -159,16 +212,18 @@ export default function ResourcesPage({ role }: Props) {
             <form onSubmit={handleSave}>
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Nome *</label>
-                  <input value={fName} onChange={e => setFName(e.target.value)} required autoFocus placeholder="Nome completo" />
-                </div>
-                <div className="form-group">
-                  <label>E-mail</label>
-                  <input type="email" value={fEmail} onChange={e => setFEmail(e.target.value)} placeholder="email@empresa.com" />
-                </div>
-                <div className="form-group">
-                  <label>Função / Especialidade</label>
-                  <input value={fRole} onChange={e => setFRole(e.target.value)} placeholder="Ex: Consultor FI, Desenvolvedor ABAP" />
+                  <label>Pessoa *</label>
+                  <select value={fProfileId} onChange={e => setFProfileId(e.target.value)} required>
+                    <option value="">— Selecione —</option>
+                    {availableProfiles.map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name ?? p.email} {p.role ? `(${p.role})` : ''}</option>
+                    ))}
+                  </select>
+                  {availableProfiles.length === 0 && (
+                    <p style={{ fontSize: '.75rem', color: 'var(--subtle)', marginTop: '.25rem' }}>
+                      Todos os perfis elegíveis já têm um recurso cadastrado.
+                    </p>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Senioridade</label>
@@ -177,8 +232,12 @@ export default function ResourcesPage({ role }: Props) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Horas disponíveis/mês</label>
-                  <input type="number" value={fHours} onChange={e => setFHours(e.target.value)} min={0} max={300} />
+                  <label>Módulos SAP</label>
+                  <input value={fModules} onChange={e => setFModules(e.target.value)} placeholder="FI, MM, SD (separados por vírgula)" />
+                </div>
+                <div className="form-group">
+                  <label>Capacidade (h/semana)</label>
+                  <input type="number" value={fHours} onChange={e => setFHours(e.target.value)} min={1} max={168} />
                 </div>
                 <div className="form-group">
                   <label>Taxa horária (R$)</label>
@@ -188,7 +247,7 @@ export default function ResourcesPage({ role }: Props) {
               {erro && <p className="erro" style={{ marginBottom: '.75rem' }}>{erro}</p>}
               <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn-secondary btn-sm" onClick={() => setShowForm(false)}>Cancelar</button>
-                <button type="submit" disabled={saving}>{saving ? 'Salvando…' : '✓ Cadastrar'}</button>
+                <button type="submit" disabled={saving || !fProfileId}>{saving ? 'Salvando…' : '✓ Cadastrar'}</button>
               </div>
             </form>
           </div>
@@ -205,7 +264,7 @@ export default function ResourcesPage({ role }: Props) {
       {/* Resource cards */}
       {loading ? (
         <div className="cap-grid">
-          {[1,2,3,4].map(i => <div key={i} style={{ height: 160, borderRadius: 'var(--r-lg)' }} className="skeleton" />)}
+          {[1, 2, 3, 4].map(i => <div key={i} style={{ height: 220, borderRadius: 'var(--r-lg)' }} className="skeleton" />)}
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">
@@ -216,63 +275,103 @@ export default function ResourcesPage({ role }: Props) {
       ) : (
         <div className="cap-grid">
           {filtered.map(r => {
-            const { totalAllocated: alloc, pct, active: activeAllocs } = utilization(r)
-            const statusCls = pct > 100 ? 'cap--overload' : pct > 80 ? 'cap--atencao' : 'cap--ok'
+            const cap = capByResource[r.id]
+            const pct = cap ? Math.min(cap.utilization_pct, 150) : 0
+            const statusCls = !cap ? '' : cap.capacity_status === 'overload' ? 'cap--overload' : cap.capacity_status === 'atencao' ? 'cap--atencao' : 'cap--ok'
             const barColor  = pct > 100 ? 'var(--danger)' : pct > 80 ? 'var(--warn)' : 'var(--ok)'
+            const active = (allocsByResource[r.id] ?? []).filter(isActiveAlloc)
+            const name = r.profile?.full_name ?? r.profile?.email ?? '—'
+
             return (
               <div key={r.id} className={`cap-card ${statusCls}`}>
                 <div className="cap-card__top">
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.25rem' }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--brand-light)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '.75rem' }}>
-                        {r.name[0].toUpperCase()}
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--brand-light)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '.75rem', flexShrink: 0 }}>
+                        {name[0]?.toUpperCase() ?? '?'}
                       </div>
                       <div>
-                        <div className="cap-card__name" style={{ fontSize: '.9375rem' }}>{r.name}</div>
-                        {r.role && <div style={{ fontSize: '.75rem', color: 'var(--subtle)' }}>{r.role}</div>}
+                        <div className="cap-card__name" style={{ fontSize: '.9375rem' }}>{name}</div>
+                        {r.profile?.email && <div style={{ fontSize: '.75rem', color: 'var(--subtle)' }}>{r.profile.email}</div>}
                       </div>
                     </div>
-                    {r.seniority && (
-                      <span className="badge" style={{ background: (SENIORITY_COLOR[r.seniority] ?? '#94A3B8') + '22', color: SENIORITY_COLOR[r.seniority] ?? '#94A3B8', fontSize: '.625rem' }}>
-                        {SENIORITY_LABEL[r.seniority] ?? r.seniority}
+                    <span className="badge" style={{ background: (SENIORITY_COLOR[r.seniority] ?? '#94A3B8') + '22', color: SENIORITY_COLOR[r.seniority] ?? '#94A3B8', fontSize: '.625rem' }}>
+                      {SENIORITY_LABEL[r.seniority] ?? r.seniority}
+                    </span>
+                    {r.sap_modules?.length > 0 && (
+                      <span style={{ fontSize: '.6875rem', color: 'var(--subtle)', marginLeft: '.375rem' }}>
+                        {r.sap_modules.join(', ')}
                       </span>
                     )}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: barColor }}>{pct}%</div>
-                    <div style={{ fontSize: '.625rem', color: 'var(--subtle)' }}>utilização</div>
-                  </div>
+                  {cap && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: barColor }}>{cap.utilization_pct}%</div>
+                      <div style={{ fontSize: '.625rem', color: 'var(--subtle)' }}>utilização/semana</div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Utilization bar */}
-                <div className="cap-bar-wrap">
-                  <div className="cap-bar">
-                    <div className="cap-bar__fill" style={{ width: `${Math.min(pct, 100)}%`, background: barColor }} />
+                {cap && (
+                  <div className="cap-bar-wrap">
+                    <div className="cap-bar">
+                      <div className="cap-bar__fill" style={{ width: `${pct}%`, background: barColor }} />
+                    </div>
+                    <span style={{ fontSize: '.75rem', color: 'var(--subtle)', whiteSpace: 'nowrap' }}>
+                      {cap.hours_this_week}h / {cap.weekly_capacity_hours}h
+                    </span>
                   </div>
-                  <span style={{ fontSize: '.75rem', color: 'var(--subtle)', whiteSpace: 'nowrap' }}>
-                    {alloc}h / {r.monthly_hours_available}h
-                  </span>
-                </div>
+                )}
 
-                {/* Active project allocations */}
-                {activeAllocs.length > 0 && (
-                  <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap', marginTop: '.25rem' }}>
-                    {activeAllocs.map(a => (
-                      <span key={a.id} className="badge badge--brand" style={{ fontSize: '.625rem' }}>
-                        {projMap[a.project_id]?.code ?? '—'} ({a.allocated_hours_month}h)
-                      </span>
+                {/* Alocações ativas */}
+                {active.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem', marginTop: '.25rem' }}>
+                    {active.map(a => (
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '.375rem' }}>
+                        <span className="badge badge--brand" style={{ fontSize: '.625rem' }}>
+                          {a.project?.code ?? '—'} · {a.allocated_hours}h{a.role_in_project ? ` · ${a.role_in_project}` : ''}
+                        </span>
+                        {canEdit && (
+                          <button className="btn-ghost btn-sm" style={{ color: 'var(--danger)', fontSize: '.625rem', padding: 0 }}
+                            onClick={() => handleEndAllocation(a.id)} title="Encerrar alocação">✕</button>
+                        )}
+                      </div>
                     ))}
                   </div>
+                ) : (
+                  <div style={{ fontSize: '.75rem', color: 'var(--subtle-2)', fontStyle: 'italic', marginTop: '.25rem' }}>Sem alocação ativa</div>
                 )}
 
-                {activeAllocs.length === 0 && (
-                  <div style={{ fontSize: '.75rem', color: 'var(--subtle-2)', fontStyle: 'italic' }}>Sem alocação ativa</div>
-                )}
-
-                {pct > 100 && (
+                {cap && pct > 100 && (
                   <div style={{ background: 'var(--danger-bg)', color: 'var(--danger)', fontSize: '.6875rem', fontWeight: 600, padding: '.25rem .5rem', borderRadius: 'var(--r-sm)', marginTop: '.25rem' }}>
                     ⚠️ Sobrecarga: {pct - 100}% acima da capacidade
                   </div>
+                )}
+
+                {canEdit && (
+                  <button className="btn-secondary btn-sm" style={{ marginTop: '.5rem' }} onClick={() => openAllocate(r.id)}>
+                    {allocatingFor === r.id ? '✕ Cancelar' : '+ Alocar a projeto'}
+                  </button>
+                )}
+
+                {allocatingFor === r.id && (
+                  <form onSubmit={e => handleAllocate(e, r.id)} style={{ marginTop: '.5rem', display: 'flex', flexDirection: 'column', gap: '.5rem', borderTop: '1px solid var(--border)', paddingTop: '.5rem' }}>
+                    <select value={aProject} onChange={e => setAProject(e.target.value)} required style={{ fontSize: '.8125rem' }}>
+                      <option value="">— Projeto —</option>
+                      {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                    </select>
+                    <div style={{ display: 'flex', gap: '.375rem' }}>
+                      <input value={aRole} onChange={e => setARole(e.target.value)} placeholder="Papel (opcional)" style={{ flex: 1, fontSize: '.8125rem' }} />
+                      <input type="number" value={aHours} onChange={e => setAHours(e.target.value)} min={1} placeholder="Horas" style={{ width: 90, fontSize: '.8125rem' }} required />
+                    </div>
+                    <div style={{ display: 'flex', gap: '.375rem' }}>
+                      <input type="date" value={aStart} onChange={e => setAStart(e.target.value)} style={{ flex: 1, fontSize: '.8125rem' }} />
+                      <input type="date" value={aEnd} onChange={e => setAEnd(e.target.value)} placeholder="Fim (opcional)" style={{ flex: 1, fontSize: '.8125rem' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button type="submit" className="btn-sm" disabled={aSaving}>{aSaving ? 'Alocando…' : '✓ Confirmar'}</button>
+                    </div>
+                  </form>
                 )}
               </div>
             )

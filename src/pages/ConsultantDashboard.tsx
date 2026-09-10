@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { getMyResource, getAllocationsByResource, getTimesheets } from '../lib/resources'
 
 type MyTask = {
   id:string; title:string; status:string; priority:string
   sap_activate_phase:string|null; due_date:string|null; project_id:string
   project:{ name:string; code:string }|null
 }
+
+type HoursRow = { projectId: string; code: string; name: string; planned: number; logged: number }
+
+function toISODate(d: Date) { return d.toISOString().slice(0, 10) }
+function monthStart(d = new Date()) { return toISODate(new Date(d.getFullYear(), d.getMonth(), 1)) }
+function monthEnd(d = new Date())   { return toISODate(new Date(d.getFullYear(), d.getMonth() + 1, 0)) }
 
 const STATUS_LABEL: Record<string,string> = {
   todo:'A fazer', in_progress:'Em andamento', blocked:'Bloqueado',
@@ -26,6 +33,8 @@ export default function ConsultantDashboard() {
   const navigate     = useNavigate()
   const [tasks,    setTasks]    = useState<MyTask[]>([])
   const [loading,  setLoading]  = useState(true)
+  const [hoursRows, setHoursRows] = useState<HoursRow[]>([])
+  const [hoursLoading, setHoursLoading] = useState(true)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
@@ -41,7 +50,42 @@ export default function ConsultantDashboard() {
     setLoading(false)
   }
 
-  useEffect(() => { void load() }, [])
+  async function loadHours() {
+    if (!profile?.id) return
+    setHoursLoading(true)
+    const { data: resource } = await getMyResource(profile.id)
+    if (!resource) { setHoursRows([]); setHoursLoading(false); return }
+
+    const today = new Date()
+    const todayISO = toISODate(today)
+    const [{ data: allocations }, { data: timesheets }] = await Promise.all([
+      getAllocationsByResource(resource.id),
+      getTimesheets({ resourceId: resource.id, startDate: monthStart(today), endDate: monthEnd(today) }),
+    ])
+
+    const rows: Record<string, HoursRow> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;((allocations ?? []) as any[])
+      .filter(a => (!a.start_date || a.start_date <= todayISO) && (!a.end_date || a.end_date >= todayISO))
+      .forEach(a => {
+        const pid = a.project_id
+        if (!rows[pid]) rows[pid] = { projectId: pid, code: a.project?.code ?? '—', name: a.project?.name ?? 'Projeto', planned: 0, logged: 0 }
+        rows[pid].planned += Number(a.allocated_hours)
+      })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;((timesheets ?? []) as any[]).forEach(t => {
+      const pid = t.project_id
+      if (!rows[pid]) rows[pid] = { projectId: pid, code: t.project?.code ?? '—', name: t.project?.name ?? 'Projeto', planned: 0, logged: 0 }
+      rows[pid].logged += Number(t.hours)
+    })
+    setHoursRows(Object.values(rows).sort((a, b) => b.planned - a.planned))
+    setHoursLoading(false)
+  }
+
+  useEffect(() => { void load(); void loadHours() }, [])
+
+  const totalPlanned = hoursRows.reduce((s, r) => s + r.planned, 0)
+  const totalLogged  = hoursRows.reduce((s, r) => s + r.logged, 0)
 
   const byStatus: Record<string,MyTask[]> = {}
   tasks.forEach(t => {
@@ -96,6 +140,43 @@ export default function ConsultantDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Horas lançadas × planejadas (mês atual) */}
+      {!hoursLoading && hoursRows.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.25rem' }}>
+          <div className="card__header">
+            <span className="card__title">⏱ Horas — lançadas × planejadas (este mês)</span>
+            <span style={{ fontSize: '.8125rem', color: 'var(--subtle)' }}>
+              {totalLogged.toFixed(1)}h / {totalPlanned.toFixed(1)}h
+            </span>
+          </div>
+          <div className="card__body">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.875rem' }}>
+              {hoursRows.map(r => {
+                const pct = r.planned > 0 ? Math.min(Math.round(r.logged / r.planned * 100), 100) : 0
+                const over = r.planned > 0 && r.logged > r.planned
+                return (
+                  <div key={r.projectId}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.375rem' }}>
+                      <span style={{ fontSize: '.875rem', fontWeight: 600 }}>
+                        <span className="badge badge--brand" style={{ marginRight: '.375rem' }}>{r.code}</span>{r.name}
+                      </span>
+                      <span style={{ fontSize: '.8125rem', fontWeight: 700, color: over ? 'var(--warn)' : 'var(--text)' }}>
+                        {r.logged.toFixed(1)}h {r.planned > 0 ? `/ ${r.planned.toFixed(1)}h` : '(sem alocação planejada)'}
+                      </span>
+                    </div>
+                    {r.planned > 0 && (
+                      <div style={{ height: 8, background: 'var(--surface-3)', borderRadius: 99, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: over ? 'var(--warn)' : 'var(--brand)', borderRadius: 99, transition: 'width .5s' }} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tarefas por status */}
       {loading ? (

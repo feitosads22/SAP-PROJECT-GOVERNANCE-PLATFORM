@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import EditTaskModal from './EditTaskModal'
 import {
   DndContext, DragOverlay, PointerSensor,
   useDroppable, useSensor, useSensors,
@@ -88,6 +89,7 @@ export default function KanbanBoard({ projectId, organizationId, role, userId }:
   const [activeTask,   setActiveTask]   = useState<Task | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showCreate,   setShowCreate]   = useState(false)
+  const [editTask, setEditTask] = useState<Task | null>(null)
   const [erro,         setErro]         = useState<string | null>(null)
   const [carregando,   setCarregando]   = useState(true)
 
@@ -179,6 +181,14 @@ export default function KanbanBoard({ projectId, organizationId, role, userId }:
       {selectedTask && (
         <EvidencePanel task={selectedTask} role={role} userId={userId}
           onClose={() => { setSelectedTask(null); void load() }} />
+      )}
+
+      {editTask && (
+        <EditTaskModal
+          task={editTask as any}
+          onClose={() => setEditTask(null)}
+          onSaved={() => { setEditTask(null); void load() }}
+        />
       )}
     </div>
   )

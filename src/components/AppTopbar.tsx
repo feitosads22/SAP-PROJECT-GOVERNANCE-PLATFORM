@@ -77,7 +77,7 @@ export default function AppTopbar({ onMenuToggle }: Props) {
             <div className="topbar__dropdown">
               <button
                 className="topbar__dropdown-item"
-                onClick={() => { setDropOpen(false) }}
+                onClick={() => { setDropOpen(false); navigate('/perfil') }}
               >
                 👤 Meu perfil
               </button>

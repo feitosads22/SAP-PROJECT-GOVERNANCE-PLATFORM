@@ -65,6 +65,23 @@ export default function ReportsPage() {
           <p className="page-header__sub">Indicadores consolidados do portfólio</p>
         </div>
         <div className="page-header__actions">
+          <button className="btn-secondary" onClick={() => {
+            if (!summary) return
+            const csv = [
+              'Métrica;Valor',
+              `Total de Projetos;${summary.total}`,
+              `Ativos;${summary.active}`,
+              `Concluídos;${summary.completed}`,
+              `Em Atraso;${summary.atrasados}`,
+              `Budget Total;${summary.budget}`,
+              `Custo Realizado;${summary.cost}`,
+              `Riscos Críticos;${summary.risks}`,
+              `Issues Abertas;${summary.issues}`,
+            ].join('\n')
+            const a = document.createElement('a')
+            a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
+            a.download = 'relatorio_portfolio.csv'; a.click()
+          }}>⬇ Exportar CSV</button>
           <button className="btn-secondary" onClick={() => load()}>🔄 Atualizar</button>
         </div>
       </div>

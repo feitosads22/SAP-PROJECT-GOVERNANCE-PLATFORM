@@ -46,9 +46,7 @@ export default function CreateProjectModal({ onClose, onCreated }: Props) {
       progress: 0,
       start_date: startDate || null,
       end_date:   endDate   || null,
-      sap_module: modules.length === 1 ? modules[0] : modules.join('/') || null,
-      sap_modules: modules,
-      sap_activate_phase: phase || null,
+      sap_module: modules.length === 1 ? modules[0] : modules.length > 1 ? modules.join('/') : null,
       created_by: profile?.id,
     }).select().single()
 

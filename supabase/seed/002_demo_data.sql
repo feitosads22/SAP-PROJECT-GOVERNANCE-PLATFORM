@@ -150,7 +150,7 @@ on conflict do nothing;
 -- 7. Riscos, issues e change requests extras
 -- ---------------------------------------------------------------
 insert into public.project_risks (organization_id, project_id, title, probability, impact, status, category)
-select '11111111-1111-1111-1111-111111111111', id, 'Atraso na entrega de dados legados', 'high','high','identified','tecnico'
+select '11111111-1111-1111-1111-111111111111', id, 'Atraso na entrega de dados legados', 'high','high','identified','technical'
 from public.projects where organization_id='11111111-1111-1111-1111-111111111111';
 
 insert into public.project_issues (organization_id, project_id, title, priority, status)

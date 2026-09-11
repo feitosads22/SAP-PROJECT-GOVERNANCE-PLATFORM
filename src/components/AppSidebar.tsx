@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import Logo2FSystem from './Logo2FSystem'
 
 type Props = { open: boolean; onClose: () => void }
 
@@ -77,8 +78,7 @@ export default function AppSidebar({ open, onClose }: Props) {
         </nav>
 
         <div className="sidebar__footer">
-          <div className="sidebar__footer-name">{organization?.name ?? 'SAP Governance'}</div>
-          <div className="sidebar__footer-tagline">Melhores decisões,{'\n'}melhores resultados.</div>
+          <Logo2FSystem size="sm" />
         </div>
       </aside>
     </>

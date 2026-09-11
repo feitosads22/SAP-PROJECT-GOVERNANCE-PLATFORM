@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import Logo2FSystem from '../components/Logo2FSystem'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -18,9 +19,10 @@ export default function Login() {
 
   return (
     <div className="tela-centro">
-      <div className="cartao">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', maxWidth: 420, width: '100%' }}>
+        <Logo2FSystem />
+        <div className="cartao" style={{ width: '100%' }}>
         <div className="auth-logo">
-          <div className="auth-logo__icon"><img src="/logo-2f-system.svg" alt="2F_System" width={30} height={30} /></div>
           <div className="auth-logo__title">SAP Governance</div>
           <div className="auth-logo__sub">Gestão de Projetos SAP</div>
         </div>
@@ -64,9 +66,7 @@ export default function Login() {
           </button>
         </form>
 
-        <p style={{ textAlign:'center', marginTop:'1.5rem', fontSize:'.75rem', color:'var(--subtle-2)' }}>
-          SAP Governance Platform · 2F_System
-        </p>
+        </div>
       </div>
     </div>
   )

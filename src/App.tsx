@@ -32,6 +32,7 @@ const NotificationsPage   = lazy(() => import('./pages/NotificationsPage'))
 const NotFound            = lazy(() => import('./pages/NotFound'))
 const DocumentsPage       = lazy(() => import('./pages/DocumentsPage'))
 const ReportsPage         = lazy(() => import('./pages/ReportsPage'))
+const PlatformAdminPage   = lazy(() => import('./pages/PlatformAdminPage'))
 
 function RouteFallback() {
   return <div className="page"><p className="sutil">Carregando…</p></div>
@@ -56,6 +57,9 @@ function AppLayout() {
     <div className="tela-centro"><p className="sutil">Carregando…</p></div>
   )
   if (!session)  return <Login />
+  if (profile?.role === 'platform_admin') return (
+    <Suspense fallback={<RouteFallback />}><PlatformAdminPage /></Suspense>
+  )
   if (!profile || profile.organization_id === null) return <Onboarding />
 
   const role   = profile.role

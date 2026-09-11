@@ -75,27 +75,21 @@ export default function TeamManagePage({ role: userRole }: Props) {
     const { data: existing } = await sb.from('profiles')
       .select('id').eq('email', email.trim().toLowerCase()).maybeSingle()
     if (existing) {
-      // Atualiza role se já existe
+      // Já tem perfil (ex: já aceitou um convite antes) — só atualiza o cargo
       const { error } = await sb.from('profiles').update({ role: newRole })
         .eq('id', existing.id)
       if (error) throw error
     } else {
-      // Cria o perfil já vinculado à org (evita depender só do e-mail combinar no signup)
-      const { error } = await sb.from('profiles').insert({
-        email: email.trim().toLowerCase(),
-        full_name: fullName.trim() || null,
-        role: newRole,
-        organization_id: profile?.organization_id,
-      })
-      if (error) throw error
-
-      // Envia o convite real por e-mail (Edge Function, usa service_role no servidor)
+      // Não existe perfil ainda: NÃO dá pra inserir manualmente (RLS só permite
+      // auto-inserção). O perfil é criado pelo trigger handle_new_user() quando
+      // a pessoa aceita o convite — a Edge Function já manda organization_id/role
+      // nos metadados para ela entrar direto na organização certa.
       const { data: { session } } = await supabase.auth.getSession()
       const { error: inviteErr } = await supabase.functions.invoke('invite-user', {
         body: { email: email.trim().toLowerCase(), full_name: fullName.trim() || null, role: newRole },
         headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       })
-      if (inviteErr) setErro(`Perfil criado, mas o e-mail de convite falhou: ${inviteErr.message}`)
+      if (inviteErr) throw inviteErr
     }
     setEmail(''); setFullName(''); setNewRole('consultant')
     setShowForm(false); void loadAll()

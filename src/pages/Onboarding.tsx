@@ -38,7 +38,7 @@ export default function Onboarding() {
     <div className="tela-centro">
       <div className="cartao">
         <div className="auth-logo">
-          <div className="auth-logo__icon">⬡</div>
+          <div className="auth-logo__icon"><img src="/logo-2f-system.svg" alt="2F_System" width={30} height={30} /></div>
           <div className="auth-logo__title">Configuração inicial</div>
           <div className="auth-logo__sub">Crie sua organização para começar</div>
         </div>
@@ -52,7 +52,7 @@ export default function Onboarding() {
           <div className="form-group">
             <label>Nome da organização</label>
             <input value={orgName} onChange={e => setOrgName(e.target.value)}
-              placeholder="Ex: System_2F" required />
+              placeholder="Ex: 2F_System" required />
           </div>
 
           {erro && (

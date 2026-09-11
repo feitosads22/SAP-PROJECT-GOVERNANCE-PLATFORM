@@ -20,7 +20,7 @@ export default function Login() {
     <div className="tela-centro">
       <div className="cartao">
         <div className="auth-logo">
-          <div className="auth-logo__icon">⬡</div>
+          <div className="auth-logo__icon"><img src="/logo-2f-system.svg" alt="2F_System" width={30} height={30} /></div>
           <div className="auth-logo__title">SAP Governance</div>
           <div className="auth-logo__sub">Gestão de Projetos SAP</div>
         </div>
@@ -65,7 +65,7 @@ export default function Login() {
         </form>
 
         <p style={{ textAlign:'center', marginTop:'1.5rem', fontSize:'.75rem', color:'var(--subtle-2)' }}>
-          SAP Governance Platform · System_2F
+          SAP Governance Platform · 2F_System
         </p>
       </div>
     </div>

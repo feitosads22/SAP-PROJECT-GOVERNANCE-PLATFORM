@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable'
 const BRAND = '#0A6ED1'
 const DARK = '#071B33'
 
-export function newReportDoc(title: string, subtitle?: string, brandName = 'System_2F') {
+export function newReportDoc(title: string, subtitle?: string, brandName = '2F_System') {
   const doc = new jsPDF({ orientation: 'landscape' })
   doc.setFillColor(DARK)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')
@@ -26,7 +26,7 @@ export function newReportDoc(title: string, subtitle?: string, brandName = 'Syst
 // Adiciona uma nova página ao doc já existente, com o mesmo cabeçalho de
 // marca — usado para relatórios com uma página por projeto (ex: status
 // report semanal), tudo num único PDF.
-export function addReportPage(doc: jsPDF, title: string, subtitle?: string, brandName = 'System_2F') {
+export function addReportPage(doc: jsPDF, title: string, subtitle?: string, brandName = '2F_System') {
   doc.addPage()
   doc.setFillColor(DARK)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')

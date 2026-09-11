@@ -47,11 +47,11 @@ export default function AppSidebar({ open, onClose }: Props) {
           {organization?.logo_url ? (
             <img src={organization.logo_url} alt={organization.name} className="sidebar__brand-icon" style={{ objectFit: 'cover' }} />
           ) : (
-            <div className="sidebar__brand-icon">⬡</div>
+            <div className="sidebar__brand-icon"><img src="/logo-2f-system.svg" alt="2F_System" width={22} height={22} /></div>
           )}
           <div>
             <div className="sidebar__brand-name">{organization?.name ?? 'SAP Governance'}</div>
-            <div className="sidebar__brand-sub">{organization ? 'Gestão de Projetos SAP · System_2F' : 'Gestão de Projetos SAP'}</div>
+            <div className="sidebar__brand-sub">{organization ? 'Gestão de Projetos SAP · 2F_System' : 'Gestão de Projetos SAP'}</div>
           </div>
         </div>
 

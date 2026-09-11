@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+  <polygon points="110,8 205,58 205,162 110,212 15,162 15,58" fill="none" stroke="#ffffff" stroke-width="9"/>
+  <text x="110" y="132" text-anchor="middle" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif" font-weight="700" font-size="92" fill="#ffffff" letter-spacing="-2">2F</text>
+  <line x1="68" y1="150" x2="152" y2="150" stroke="#ffffff" stroke-width="9"/>
+</svg>

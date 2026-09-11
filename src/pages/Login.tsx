@@ -65,7 +65,7 @@ export default function Login() {
         </form>
 
         <p style={{ textAlign:'center', marginTop:'1.5rem', fontSize:'.75rem', color:'var(--subtle-2)' }}>
-          SAP Governance Platform · SPS Consulting
+          SAP Governance Platform · System_2F
         </p>
       </div>
     </div>

@@ -144,7 +144,7 @@ export default function SettingsPage({ role }: Props) {
             { label: 'Plataforma',  val: 'SAP Governance Platform' },
             { label: 'Versão',      val: 'Fase 9 — Build 2026.09' },
             { label: 'Stack',       val: 'React + TypeScript + Supabase + Vercel' },
-            { label: 'Suporte',     val: 'SPS Consulting' },
+            { label: 'Suporte',     val: 'System_2F' },
           ].map(r => (
             <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '.5rem 0', borderBottom: '1px solid var(--border)' }}>
               <span style={{ fontSize: '.875rem', color: 'var(--subtle)' }}>{r.label}</span>

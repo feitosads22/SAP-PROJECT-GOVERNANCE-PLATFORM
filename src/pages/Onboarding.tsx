@@ -52,7 +52,7 @@ export default function Onboarding() {
           <div className="form-group">
             <label>Nome da organização</label>
             <input value={orgName} onChange={e => setOrgName(e.target.value)}
-              placeholder="Ex: SPS Consulting" required />
+              placeholder="Ex: System_2F" required />
           </div>
 
           {erro && (

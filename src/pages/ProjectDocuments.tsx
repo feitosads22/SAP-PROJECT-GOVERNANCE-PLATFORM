@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { generateProjectStatusReport } from '../lib/statusReport'
+import { generateManualFromEvidences, markdownToPdfBlob } from '../lib/manuals'
 import { toast } from '../components/Toast'
 
 const CATEGORIES = [
@@ -53,6 +54,10 @@ export default function ProjectDocuments({ projectId, role }: Props) {
   const [search,    setSearch]    = useState('')
   const [uploading, setUploading] = useState(false)
   const [gerandoReport, setGerandoReport] = useState(false)
+  const [modules,   setModules]   = useState<{ id: string; name: string; code: string }[]>([])
+  const [showManualForm, setShowManualForm] = useState(false)
+  const [manualModule,   setManualModule]   = useState('')
+  const [gerandoManual,  setGerandoManual]  = useState(false)
   const [showForm,  setShowForm]  = useState(false)
   const [title,     setTitle]     = useState('')
   const [desc,      setDesc]      = useState('')
@@ -66,10 +71,11 @@ export default function ProjectDocuments({ projectId, role }: Props) {
 
   async function load() {
     setLoading(true)
-    const { data, error } = await sb.from('project_documents')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
+    const [{ data, error }, { data: mData }] = await Promise.all([
+      sb.from('project_documents').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
+      sb.from('project_modules').select('id,name,code').eq('project_id', projectId).order('sort_order'),
+    ])
+    setModules(mData ?? [])
     if (error) setErro(error.message)
     else setDocs(data ?? [])
     setLoading(false)
@@ -155,6 +161,49 @@ export default function ProjectDocuments({ projectId, role }: Props) {
     }
   }
 
+  async function handleGenerateManual() {
+    setGerandoManual(true); setErro(null)
+    try {
+      const result = await generateManualFromEvidences(projectId, manualModule || undefined)
+      if (!result.ok) { toast(result.reason, 'warn'); return }
+
+      const moduleLabel = modules.find(m => m.id === manualModule)?.code
+      const blob = markdownToPdfBlob(result.markdown, organization?.name ?? undefined)
+      const isoDate = new Date().toISOString().slice(0, 10)
+      const baseTitle = `Manual${moduleLabel ? ` — ${moduleLabel}` : ''} — ${isoDate}`
+      const fileName = `${baseTitle.replace(/[^a-zA-Z0-9À-ú._ -]/g, '')}.pdf`
+      const path = `${profile?.organization_id}/${projectId}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+
+      const { error: upErr } = await supabase.storage
+        .from('project-documents')
+        .upload(path, blob, { contentType: 'application/pdf' })
+      if (upErr) throw upErr
+
+      const { error: dbErr } = await sb.from('project_documents').insert({
+        organization_id: profile?.organization_id,
+        project_id:   projectId,
+        title:        baseTitle,
+        description:  `Gerado por IA a partir de ${result.evidenceCount} evidência(s) aprovada(s).`,
+        category:     'manual',
+        storage_path: path,
+        file_name:    fileName,
+        file_size:    blob.size,
+        mime_type:    'application/pdf',
+        version:      isoDate,
+        uploaded_by:  profile?.id,
+      })
+      if (dbErr) throw dbErr
+
+      toast(`Manual gerado a partir de ${result.evidenceCount} evidência(s) e salvo em Documentos.`, 'ok')
+      setShowManualForm(false); setManualModule('')
+      void load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Erro ao gerar manual.', 'error')
+    } finally {
+      setGerandoManual(false)
+    }
+  }
+
   async function handleDelete(doc: Doc) {
     if (!confirm(`Remover "${doc.title}"?`)) return
     await supabase.storage.from('project-documents').remove([doc.storage_path])
@@ -197,7 +246,33 @@ export default function ProjectDocuments({ projectId, role }: Props) {
             {gerandoReport ? 'Gerando…' : '📄 Gerar Status Report'}
           </button>
         )}
+        {canEdit && (
+          <button className="btn-secondary btn-sm" onClick={() => setShowManualForm(v => !v)}>
+            {showManualForm ? '✕ Cancelar' : '🤖 Gerar Manual com IA'}
+          </button>
+        )}
       </div>
+
+      {/* Gerar manual com IA a partir das evidências aprovadas */}
+      {showManualForm && canEdit && (
+        <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:'1.25rem', marginBottom:'1.25rem' }}>
+          <p style={{ fontSize:'.8125rem', color:'var(--subtle)', marginBottom:'.75rem' }}>
+            A IA lê as evidências <strong>aprovadas</strong> das tarefas deste projeto (título, descrição, fase e módulo) e sintetiza um manual técnico em PDF, salvo direto aqui em Documentos.
+          </p>
+          <div style={{ display:'flex', gap:'.75rem', alignItems:'flex-end', flexWrap:'wrap' }}>
+            <div className="form-group" style={{ minWidth:220 }}>
+              <label>Módulo (opcional)</label>
+              <select value={manualModule} onChange={e => setManualModule(e.target.value)}>
+                <option value="">Todos os módulos</option>
+                {modules.map(m => <option key={m.id} value={m.id}>{m.code} — {m.name}</option>)}
+              </select>
+            </div>
+            <button onClick={handleGenerateManual} disabled={gerandoManual}>
+              {gerandoManual ? 'Gerando com IA…' : '✨ Gerar manual'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Upload form */}
       {showForm && canEdit && (

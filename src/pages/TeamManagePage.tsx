@@ -61,7 +61,7 @@ export default function TeamManagePage({ role: userRole }: Props) {
     const [rP, rM, rA] = await Promise.all([
       sb.from('profiles').select('id,full_name,email,role,created_at').order('role').order('full_name'),
       getProjects(),
-      sb.from('project_members').select('id,user_id,project_id,role,profile:profiles(full_name,email)').order('created_at', { ascending: false }),
+      sb.from('project_members').select('id,user_id,project_id,role,profile:profiles!project_members_user_id_fkey(full_name,email)').order('created_at', { ascending: false }),
     ])
     if (!rP.error) setMembers(rP.data ?? [])
     if (!rM.error) setProjects(rM.data ?? [])

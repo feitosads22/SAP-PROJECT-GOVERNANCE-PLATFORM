@@ -13,6 +13,7 @@ import BudgetPage from './BudgetPage'
 import EditProjectModal from '../components/EditProjectModal'
 import GovernancePage from './GovernancePage'
 import CustomerManagePage from './CustomerManagePage'
+import ProjectTeamTab from '../components/ProjectTeamTab'
 
 const STATUS_COLOR: Record<string,string> = {
   draft:'#94A3B8', active:'#16A34A', on_hold:'#F59E0B',
@@ -139,10 +140,11 @@ export default function ProjectDetail({ role, userId }: Props) {
   const IMPACT_LABEL: Record<string,string> = { low:'Baixo', medium:'Médio', high:'Alto', critical:'Crítico' }
   const ISSUE_STATUS: Record<string,string> = { open:'Aberta', in_progress:'Em andamento', resolved:'Resolvida', closed:'Fechada', cancelled:'Cancelada' }
 
-type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'documentos'|'cronograma'|'documentos'
+type Tab = 'overview'|'tasks'|'equipe'|'risks'|'financial'|'governance'|'clientes'|'documentos'|'cronograma'|'documentos'
   const TABS: { id: Tab; label: string; icon: string; roles?: string[] }[] = [
     { id:'overview',   label:'Visão Geral',  icon:'📊' },
     { id:'tasks',      label:'Tarefas',       icon:'✓' },
+    { id:'equipe',     label:'Equipe',        icon:'👥', roles:['admin','manager','consultant'] },
     { id:'risks',      label:'Riscos & Issues',icon:'⚠️' },
     { id:'financial',  label:'Financeiro',    icon:'💰', roles:['admin','manager','consultant'] },
     { id:'governance', label:'Governança',    icon:'🛡️', roles:['admin','manager','consultant'] },
@@ -379,6 +381,10 @@ type Tab = 'overview'|'tasks'|'risks'|'financial'|'governance'|'clientes'|'docum
           role={role}
           userId={userId}
         />
+      )}
+
+      {tab === 'equipe' && (
+        <ProjectTeamTab projectId={project.id} canManage={canEdit} />
       )}
 
       {tab === 'risks' && (

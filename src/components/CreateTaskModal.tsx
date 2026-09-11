@@ -147,17 +147,19 @@ export default function CreateTaskModal({
               </select>
             </div>
 
-<div>
+            <div>
               <label>Módulo SAP</label>
               <select value={moduleId} onChange={e => setModuleId(e.target.value)}>
                 <option value="">— Nenhum —</option>
-                {['FI','CO','MM','SD','PP','WM','HCM','PS','PM','QM','FI/TR','BW/BO','HCM/SF','MM/SD'].map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-                {modules.filter(m => !['FI','CO','MM','SD','PP','WM','HCM','PS','PM','QM','FI/TR','BW/BO','HCM/SF','MM/SD'].includes(m.code)).map(m => (
-                  <option key={m.id} value={m.code}>{m.code} — {m.name}</option>
+                {modules.map(m => (
+                  <option key={m.id} value={m.id}>{m.code} — {m.name}</option>
                 ))}
               </select>
+              {modules.length === 0 && projectId && (
+                <p className="sutil" style={{ marginTop: '.25rem', fontSize: '.75rem' }}>
+                  Este projeto ainda não tem módulos cadastrados.
+                </p>
+              )}
             </div>
 
             <div>

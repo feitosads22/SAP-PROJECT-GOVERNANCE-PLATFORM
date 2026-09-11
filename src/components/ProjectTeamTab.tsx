@@ -7,7 +7,7 @@ import { toast } from './Toast'
 type MemberProfile = { id: string; full_name: string | null; email: string | null }
 type Member = { id: string; user_id: string; role: string; profile: MemberProfile | null }
 type ResourceMini = { id: string; profile_id: string; seniority: string; weekly_capacity_hours: number }
-type AllocMini = { resource_id: string; project_id: string; allocated_hours: number; project: { id: string; code: string; name: string } | null }
+type AllocMini = { id: string; resource_id: string; project_id: string; allocated_hours: number; project: { id: string; code: string; name: string } | null }
 
 const ROLE_LABEL: Record<string, string> = { manager: 'Gerente', consultant: 'Consultor', viewer: 'Visualizador' }
 const ROLE_COLOR: Record<string, string> = { manager: '#0A6ED1', consultant: '#16A34A', viewer: '#94A3B8' }
@@ -24,6 +24,10 @@ export default function ProjectTeamTab({ projectId, canManage }: Props) {
   const [newUser, setNewUser] = useState('')
   const [newRole, setNewRole] = useState('consultant')
   const [saving, setSaving] = useState(false)
+  // edição de % dedicado
+  const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [editPct, setEditPct] = useState('')
+  const [savingPct, setSavingPct] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
@@ -49,7 +53,7 @@ export default function ProjectTeamTab({ projectId, canManage }: Props) {
     if (resourceIds.length === 0) { setAllocations([]); setLoading(false); return }
 
     const { data: allocs } = await sb.from('resource_allocations')
-      .select('resource_id, project_id, allocated_hours, project:projects(id, code, name)')
+      .select('id, resource_id, project_id, allocated_hours, project:projects(id, code, name)')
       .in('resource_id', resourceIds)
     setAllocations((allocs ?? []) as AllocMini[])
     setLoading(false)
@@ -76,6 +80,27 @@ export default function ProjectTeamTab({ projectId, canManage }: Props) {
     if (error) toast(error.message, 'error')
     else { toast('Membro adicionado!', 'ok'); setShowForm(false); setNewUser(''); setNewRole('consultant'); void load() }
     setSaving(false)
+  }
+
+  function startEditPct(userId: string, currentPct: number | null) {
+    setEditingUser(userId)
+    setEditPct(currentPct != null ? String(currentPct) : '')
+  }
+
+  async function savePct(resource: ResourceMini, existingAllocId: string | undefined) {
+    const pct = Math.max(0, Math.min(100, Number(editPct)))
+    if (!editPct || Number.isNaN(pct)) return
+    setSavingPct(true)
+    const hours = Math.round((pct / 100) * resource.weekly_capacity_hours * 10) / 10
+    const { error } = existingAllocId
+      ? await sb.from('resource_allocations').update({ allocated_hours: hours }).eq('id', existingAllocId)
+      : await sb.from('resource_allocations').insert({
+          resource_id: resource.id, project_id: projectId,
+          allocated_hours: hours, start_date: new Date().toISOString().slice(0, 10),
+        })
+    if (error) toast(error.message, 'error')
+    else { toast('% de dedicação atualizado!', 'ok'); setEditingUser(null); void load() }
+    setSavingPct(false)
   }
 
   async function handleRemove(id: string) {
@@ -138,9 +163,14 @@ export default function ProjectTeamTab({ projectId, canManage }: Props) {
                   const resource = resourcesByProfile[m.user_id]
                   const myAllocs = resource ? allocations.filter(a => a.resource_id === resource.id) : []
                   const thisAlloc = myAllocs.find(a => a.project_id === projectId)
-                  const totalHours = myAllocs.reduce((s, a) => s + Number(a.allocated_hours), 0)
-                  const pct = thisAlloc && totalHours > 0 ? Math.round(Number(thisAlloc.allocated_hours) / totalHours * 100) : null
+                  const pct = resource && resource.weekly_capacity_hours > 0
+                    ? Math.round((thisAlloc ? Number(thisAlloc.allocated_hours) : 0) / resource.weekly_capacity_hours * 100)
+                    : null
+                  const totalPctAllProjects = resource && resource.weekly_capacity_hours > 0
+                    ? Math.round(myAllocs.reduce((s, a) => s + Number(a.allocated_hours), 0) / resource.weekly_capacity_hours * 100)
+                    : null
                   const otherProjects = myAllocs.filter(a => a.project_id !== projectId && a.project)
+                  const isEditing = editingUser === m.user_id
                   return (
                     <tr key={m.id}>
                       <td>
@@ -154,15 +184,37 @@ export default function ProjectTeamTab({ projectId, canManage }: Props) {
                       </td>
                       <td style={{ fontSize: '.8125rem' }}>{resource?.seniority ?? '—'}</td>
                       <td style={{ fontWeight: 700 }}>{thisAlloc ? `${thisAlloc.allocated_hours}h` : '—'}</td>
-                      <td style={{ minWidth: 130 }}>
-                        {pct != null ? (
+                      <td style={{ minWidth: 170 }}>
+                        {isEditing ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '.375rem' }}>
-                            <div style={{ flex: 1, height: 6, background: 'var(--surface-3)', borderRadius: 99, overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', background: pct >= 70 ? 'var(--ok)' : pct >= 30 ? 'var(--brand)' : 'var(--warn)', borderRadius: 99 }} />
-                            </div>
-                            <span style={{ fontSize: '.75rem', fontWeight: 700 }}>{pct}%</span>
+                            <input type="number" min={0} max={100} value={editPct} onChange={e => setEditPct(e.target.value)}
+                              autoFocus style={{ width: 64, fontSize: '.8125rem', padding: '.2rem .4rem' }}
+                              onKeyDown={e => { if (e.key === 'Enter' && resource) void savePct(resource, thisAlloc?.id); if (e.key === 'Escape') setEditingUser(null) }} />
+                            <span style={{ fontSize: '.75rem' }}>%</span>
+                            <button className="btn-sm" disabled={savingPct || !resource} onClick={() => resource && savePct(resource, thisAlloc?.id)}>{savingPct ? '…' : '✓'}</button>
+                            <button className="btn-ghost btn-sm" onClick={() => setEditingUser(null)}>✕</button>
                           </div>
-                        ) : <span className="sutil">—</span>}
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '.375rem' }}>
+                            {pct != null ? (
+                              <>
+                                <div style={{ flex: 1, height: 6, background: 'var(--surface-3)', borderRadius: 99, overflow: 'hidden', minWidth: 50 }}>
+                                  <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: pct >= 70 ? 'var(--ok)' : pct >= 30 ? 'var(--brand)' : 'var(--warn)', borderRadius: 99 }} />
+                                </div>
+                                <span style={{ fontSize: '.75rem', fontWeight: 700 }}>{pct}%</span>
+                              </>
+                            ) : <span className="sutil">{resource ? '0%' : '—'}</span>}
+                            {canManage && resource && (
+                              <button className="btn-ghost btn-sm" style={{ padding: 0, fontSize: '.6875rem' }} title="Editar %"
+                                onClick={() => startEditPct(m.user_id, pct)}>✏️</button>
+                            )}
+                          </div>
+                        )}
+                        {!isEditing && totalPctAllProjects != null && totalPctAllProjects > 100 && (
+                          <div style={{ fontSize: '.625rem', color: 'var(--danger)', fontWeight: 700, marginTop: '.125rem' }}>
+                            ⚠️ {totalPctAllProjects}% no total (sobrealocado)
+                          </div>
+                        )}
                       </td>
                       <td>
                         {otherProjects.length === 0 ? (
@@ -192,7 +244,9 @@ export default function ProjectTeamTab({ projectId, canManage }: Props) {
       </div>
       {!loading && members.length > 0 && (
         <div style={{ padding: '.5rem 1.25rem', fontSize: '.75rem', color: 'var(--subtle)', borderTop: '1px solid var(--border)' }}>
-          Horas e % vêm das alocações cadastradas em <Link to="/recursos">Gestão de Recursos</Link>. Quem ainda não tem recurso/alocação aparece sem horas.
+          % = horas alocadas neste projeto ÷ capacidade semanal da pessoa. Clique no ✏️ pra editar direto aqui —
+          isso cria/atualiza a alocação em <Link to="/recursos">Gestão de Recursos</Link>. Quem não tem recurso cadastrado
+          precisa ser cadastrado lá primeiro.
         </div>
       )}
     </div>

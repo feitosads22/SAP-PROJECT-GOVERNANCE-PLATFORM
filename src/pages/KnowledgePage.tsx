@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProjects } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import type { Project } from '../types/app.types'
 
 type Article = {
@@ -25,6 +26,7 @@ const SAP_PHASES = ['Descobrir','Preparar','Explorar','Realizar','Implementar','
 type Props = { role: string; userId: string }
 
 export default function KnowledgePage({ role, userId }: Props) {
+  const { profile } = useAuth()
   const [tab,       setTab]       = useState<'kb'|'ai'>('ai')
   const [articles,  setArticles]  = useState<Article[]>([])
   const [projects,  setProjects]  = useState<Project[]>([])
@@ -86,6 +88,7 @@ export default function KnowledgePage({ role, userId }: Props) {
     if (!artTitle.trim() || !artBody.trim()) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('knowledge_articles').insert({
+      organization_id: profile?.organization_id,
       title: artTitle, body: artBody, summary: artSummary || null,
       category: artCat, sap_activate_phase: artPhase || null,
       sap_module: artModule || null, created_by: userId,

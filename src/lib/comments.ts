@@ -18,11 +18,11 @@ export async function getTaskComments(taskId: string) {
     .order('created_at', { ascending: true })
 }
 
-export async function createTaskComment(taskId: string, authorId: string, body: string) {
+export async function createTaskComment(taskId: string, authorId: string, body: string, organizationId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (supabase as any)
     .from('task_comments')
-    .insert({ task_id: taskId, author_id: authorId, body })
+    .insert({ task_id: taskId, author_id: authorId, body, organization_id: organizationId })
     .select('*, author:profiles(id, full_name)')
     .single()
 }

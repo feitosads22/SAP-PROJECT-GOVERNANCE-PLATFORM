@@ -39,6 +39,21 @@ export default function MyTasks({ userId, role }: Props) {
 
   const overdue = tasks.filter(t => t.planned_end_date && new Date(t.planned_end_date) < new Date())
 
+  // Agrupado por projeto — um consultor costuma estar em mais de um projeto
+  // ao mesmo tempo, então a visão por projeto ajuda a priorizar o dia.
+  const byProject = new Map<string, { projeto: { id?: string; name: string; code: string } | null; tasks: Task[] }>()
+  tasks.forEach(t => {
+    const row = t as unknown as Record<string, unknown>
+    const projeto = (row['project'] as { id?: string; name: string; code: string } | null) ?? null
+    const key = projeto?.id ?? projeto?.code ?? '—'
+    if (!byProject.has(key)) byProject.set(key, { projeto, tasks: [] })
+    byProject.get(key)!.tasks.push(t)
+  })
+  const groups = Array.from(byProject.values()).sort((a, b) =>
+    (b.tasks.filter(t => t.planned_end_date && new Date(t.planned_end_date) < new Date()).length) -
+    (a.tasks.filter(t => t.planned_end_date && new Date(t.planned_end_date) < new Date()).length)
+  )
+
   return (
     <div className="page">
       <div className="page-header">
@@ -67,54 +82,68 @@ export default function MyTasks({ userId, role }: Props) {
         <p className="sutil">Nenhuma tarefa ativa atribuída a você.</p>
       )}
 
-      {tasks.length > 0 && (
-        <table className="tabela">
-          <thead>
-            <tr>
-              <th>Prioridade</th>
-              <th>Tarefa</th>
-              <th>Projeto</th>
-              <th>Fase SAP</th>
-              <th>Status</th>
-              <th>Prazo</th>
-              <th>Evidência</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tasks.map(t => {
-              const row     = t as unknown as Record<string, unknown>
-              const projeto  = row['project'] as { name: string; code: string } | null
-              const sapPhase = row['sap_activate_phase'] as string | undefined
-              const atrasada = t.planned_end_date && new Date(t.planned_end_date) < new Date()
-              const prio = t.priority as keyof typeof PRIORITY_COLOR
-              return (
-                <tr key={t.id} className={atrasada ? 'row--overdue' : ''}
-                  style={{ cursor:'pointer' }} onClick={() => setSelected(t)}>
-                  <td>
-                    <span className="badge" style={{
-                      background: PRIORITY_COLOR[prio] + '22',
-                      color: PRIORITY_COLOR[prio],
-                      borderColor: PRIORITY_COLOR[prio] + '44',
-                    }}>
-                      {PRIORITY_LABEL[prio]}
-                    </span>
-                  </td>
-                  <td><strong>{t.title}</strong></td>
-                  <td>{projeto?.code ?? '—'}</td>
-                  <td>{sapPhase ? <span className="badge badge--ev">{sapPhase}</span> : '—'}</td>
-                  <td>{TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL]}</td>
-                  <td className={atrasada ? 'overdue-label' : ''}>
-                    {t.planned_end_date
-                      ? new Date(t.planned_end_date).toLocaleDateString('pt-BR')
-                      : '—'}
-                  </td>
-                  <td>{t.requires_evidence ? <span className="badge badge--ev">Obrig.</span> : '—'}</td>
+      {groups.map(g => {
+        const groupOverdue = g.tasks.filter(t => t.planned_end_date && new Date(t.planned_end_date) < new Date()).length
+        return (
+          <div key={g.projeto?.id ?? g.projeto?.code ?? '—'} className="card" style={{ marginBottom: '1.25rem' }}>
+            <div className="card__header">
+              <span className="card__title">
+                <span className="badge badge--brand" style={{ marginRight: '.5rem' }}>{g.projeto?.code ?? '—'}</span>
+                {g.projeto?.name ?? 'Sem projeto'}
+              </span>
+              <span className="sutil" style={{ fontSize: '.8125rem' }}>
+                {g.tasks.length} tarefa{g.tasks.length !== 1 ? 's' : ''}
+                {groupOverdue > 0 && (
+                  <span className="overdue-label" style={{ marginLeft: '.5rem' }}>· {groupOverdue} em atraso</span>
+                )}
+              </span>
+            </div>
+            <table className="tabela">
+              <thead>
+                <tr>
+                  <th>Prioridade</th>
+                  <th>Tarefa</th>
+                  <th>Fase SAP</th>
+                  <th>Status</th>
+                  <th>Prazo</th>
+                  <th>Evidência</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
+              </thead>
+              <tbody>
+                {g.tasks.map(t => {
+                  const row      = t as unknown as Record<string, unknown>
+                  const sapPhase = row['sap_activate_phase'] as string | undefined
+                  const atrasada = t.planned_end_date && new Date(t.planned_end_date) < new Date()
+                  const prio = t.priority as keyof typeof PRIORITY_COLOR
+                  return (
+                    <tr key={t.id} className={atrasada ? 'row--overdue' : ''}
+                      style={{ cursor:'pointer' }} onClick={() => setSelected(t)}>
+                      <td>
+                        <span className="badge" style={{
+                          background: PRIORITY_COLOR[prio] + '22',
+                          color: PRIORITY_COLOR[prio],
+                          borderColor: PRIORITY_COLOR[prio] + '44',
+                        }}>
+                          {PRIORITY_LABEL[prio]}
+                        </span>
+                      </td>
+                      <td><strong>{t.title}</strong></td>
+                      <td>{sapPhase ? <span className="badge badge--ev">{sapPhase}</span> : '—'}</td>
+                      <td>{TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL]}</td>
+                      <td className={atrasada ? 'overdue-label' : ''}>
+                        {t.planned_end_date
+                          ? new Date(t.planned_end_date).toLocaleDateString('pt-BR')
+                          : '—'}
+                      </td>
+                      <td>{t.requires_evidence ? <span className="badge badge--ev">Obrig.</span> : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      })}
 
       {selected && (
         <EvidencePanel task={selected} role={role} userId={userId}

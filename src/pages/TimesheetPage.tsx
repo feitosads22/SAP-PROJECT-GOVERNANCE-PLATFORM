@@ -5,6 +5,7 @@ import { getMyResource, getTimesheets, createTimesheet, approveTimesheet, reject
 import type { Timesheet } from '../lib/resources'
 import { toast } from '../components/Toast'
 import { newReportDoc, addReportTable, footerAndSave } from '../lib/pdf'
+import { useAuth } from '../contexts/AuthContext'
 import type { Project, Task } from '../types/app.types'
 
 type TS = Timesheet & {
@@ -59,6 +60,7 @@ function monthStart(date = new Date()) { return toISODate(new Date(date.getFullY
 function monthEnd(date = new Date())   { return toISODate(new Date(date.getFullYear(), date.getMonth() + 1, 0)) }
 
 export default function TimesheetPage({ userId, role }: Props) {
+  const { profile } = useAuth()
   const [timesheets, setTimesheets] = useState<TS[]>([])
   const [projects,   setProjects]   = useState<Project[]>([])
   const [tasks,      setTasks]      = useState<Task[]>([])
@@ -142,6 +144,7 @@ export default function TimesheetPage({ userId, role }: Props) {
     if (!myResourceId) { toast('Você não está cadastrado como recurso — fale com seu gestor.', 'error'); return }
     setSaving(true)
     const { error } = await createTimesheet({
+      organization_id: profile?.organization_id ?? undefined,
       resource_id: myResourceId,
       project_id: fProj,
       task_id: fTask || null,

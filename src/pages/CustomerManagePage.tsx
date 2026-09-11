@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 type Link = {
   id: string; organization_id: string; project_id: string;
@@ -32,6 +33,7 @@ export default function CustomerManagePage({ role, userId, overrideProjectId }: 
   const params = useParams<{ id: string }>()
   const projectId = overrideProjectId ?? params.id
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const canEdit  = role === 'admin' || role === 'manager'
 
   const [links,     setLinks]     = useState<Link[]>([])
@@ -78,7 +80,7 @@ export default function CustomerManagePage({ role, userId, overrideProjectId }: 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('project_customers')
       .upsert(
-        { project_id: projectId, customer_id: selCustomer,
+        { organization_id: profile?.organization_id, project_id: projectId, customer_id: selCustomer,
           access_level: selAccess, invited_by: userId },
         { onConflict: 'project_id,customer_id', ignoreDuplicates: false }
       )
@@ -96,6 +98,7 @@ export default function CustomerManagePage({ role, userId, overrideProjectId }: 
     if (!updTitle.trim() || !updBody.trim() || !projectId) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('customer_updates').insert({
+      organization_id: profile?.organization_id,
       project_id: projectId, title: updTitle, body: updBody,
       update_type: updType, is_published: updPublish,
       published_at: updPublish ? new Date().toISOString() : null,

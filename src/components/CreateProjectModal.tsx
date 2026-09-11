@@ -38,6 +38,7 @@ export default function CreateProjectModal({ onClose, onCreated }: Props) {
     if (!name.trim() || !code.trim()) { setErro('Nome e código são obrigatórios.'); return }
     setSaving(true); setErro(null)
     const { data, error } = await sb.from('projects').insert({
+      organization_id: profile?.organization_id,
       name: name.trim(),
       code: code.trim().toUpperCase(),
       description: description.trim() || null,

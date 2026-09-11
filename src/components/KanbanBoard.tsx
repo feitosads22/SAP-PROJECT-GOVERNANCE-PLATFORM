@@ -16,6 +16,14 @@ import CreateTaskModal from './CreateTaskModal'
 type Props = { projectId: string; organizationId: string; role: string; userId: string }
 type ColumnMap = Record<TaskStatus, Task[]>
 
+// Uma tarefa em "Validação" que exige evidência fica travada até o
+// gerente aprovar — espelha o trigger do banco (0016_lock_validation_until_approved).
+function isLockedInValidation(task: Task): boolean {
+  if (task.status !== 'validation' || !task.requires_evidence) return false
+  const hasApproved = (task.evidences ?? []).some(ev => ev.status === 'approved')
+  return !hasApproved
+}
+
 function buildColumns(tasks: Task[]): ColumnMap {
   const cols = Object.fromEntries(KANBAN_COLUMNS.map(s => [s, []])) as unknown as ColumnMap
   for (const t of tasks) { const s = t.status as TaskStatus; if (cols[s]) cols[s].push(t) }
@@ -27,7 +35,7 @@ function TaskCard({ task, onClick, overlay = false }:
   { task: Task; onClick?: () => void; overlay?: boolean }) {
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id })
+    useSortable({ id: task.id, disabled: overlay ? undefined : isLockedInValidation(task) })
 
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }
   const prio  = task.priority as keyof typeof PRIORITY_COLOR
@@ -36,16 +44,22 @@ function TaskCard({ task, onClick, overlay = false }:
     ? new Date(task.planned_end_date) < new Date() : false
   const responsavel = task.assignee?.full_name ?? task.assignee?.email ?? null
   const arquivosEvidencia = (task.evidences ?? []).flatMap(ev => ev.attachments ?? [])
+  const locked = !overlay && isLockedInValidation(task)
 
   return (
     <div
       ref={overlay ? undefined : setNodeRef}
       style={overlay ? undefined : style}
       {...(overlay ? {} : { ...attributes, ...listeners })}
-      className={`kcard${overdue ? ' kcard--overdue' : ''}`}
+      className={`kcard${overdue ? ' kcard--overdue' : ''}${locked ? ' kcard--locked' : ''}`}
       onClick={onClick}
     >
       <div className="kcard__prio" style={{ background: PRIORITY_COLOR[prio] }} />
+      {locked && (
+        <span className="badge" style={{ background: '#F59E0B22', color: '#F59E0B', fontSize: '.625rem', marginBottom: '.25rem', display: 'inline-block' }}>
+          🔒 Aguardando aprovação do gerente
+        </span>
+      )}
       <p className="kcard__title">{task.title}</p>
 
       <div className="kcard__assignee" style={{ display:'flex', alignItems:'center', gap:'.375rem', margin:'.25rem 0' }}>

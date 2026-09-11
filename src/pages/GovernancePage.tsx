@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import type { Database } from '../types/database.types'
 
 type Risk   = Database['public']['Tables']['project_risks']['Row']
@@ -62,6 +63,7 @@ export default function GovernancePage({ role, userId, overrideProjectId }: Prop
   const params = useParams<{ id: string }>()
   const projectId = overrideProjectId ?? params.id
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const canEdit  = role === 'admin' || role === 'manager'
   const canApprove = role === 'admin' || role === 'manager'
 
@@ -123,6 +125,7 @@ export default function GovernancePage({ role, userId, overrideProjectId }: Prop
     if (!rTitle.trim() || !projectId) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('project_risks').insert({
+      organization_id: profile?.organization_id,
       project_id: projectId, title: rTitle, probability: rProb,
       impact: rImp, category: rCat, mitigation_plan: rMit || undefined,
       status: rStatus, created_by: userId,
@@ -135,6 +138,7 @@ export default function GovernancePage({ role, userId, overrideProjectId }: Prop
     if (!iTitle.trim() || !projectId) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('project_issues').insert({
+      organization_id: profile?.organization_id,
       project_id: projectId, title: iTitle, priority: iPrio,
       impact: iImpact || undefined, status: iStatus, created_by: userId,
     })
@@ -146,6 +150,7 @@ export default function GovernancePage({ role, userId, overrideProjectId }: Prop
     if (!crTitle.trim() || !projectId) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('change_requests').insert({
+      organization_id: profile?.organization_id,
       project_id: projectId, title: crTitle,
       description: crDesc || undefined, justification: crJust || undefined,
       additional_cost: parseFloat(crCost) || 0,

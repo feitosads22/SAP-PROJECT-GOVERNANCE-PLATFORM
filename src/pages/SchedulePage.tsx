@@ -99,6 +99,7 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
     if (!milName.trim() || !milDate) return
     setSavingMil(true)
     const { error } = await sb.from('milestones').insert({
+      organization_id: profile?.organization_id,
       project_id: projectId, name: milName.trim(),
       description: milDesc.trim() || null, due_date: milDate, status: 'not_started',
       criticality: milCrit,

@@ -53,9 +53,9 @@ export default function TaskActivity({ taskId, taskTitle }: Props) {
   useEffect(() => { void load() }, [taskId])
 
   async function handleSubmit() {
-    if (!body.trim() || !profile?.id) return
+    if (!body.trim() || !profile?.id || !profile.organization_id) return
     setSaving(true)
-    const { data, error } = await createTaskComment(taskId, profile.id, body.trim())
+    const { data, error } = await createTaskComment(taskId, profile.id, body.trim(), profile.organization_id)
     if (error) { toast(error.message, 'error'); setSaving(false); return }
     const mentioned = extractMentions(body, profiles)
     for (const m of mentioned) {

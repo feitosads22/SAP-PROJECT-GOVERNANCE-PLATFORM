@@ -110,6 +110,7 @@ export default function BudgetPage({ role, userId, overrideProjectId }: Props) {
     if (!projectId) return
     setSavingBudget(true); setErro(null)
     const { error } = await upsertBudget({
+      organization_id: project?.organization_id,
       project_id:      projectId,
       budget_total:    parseFloat(budgetTotal) || 0,
       revenue_planned: parseFloat(revenuePlanned) || 0,
@@ -132,6 +133,7 @@ export default function BudgetPage({ role, userId, overrideProjectId }: Props) {
     if (!projectId || !costDesc || !costAmount) return
     setSavingCost(true); setErro(null)
     const { error } = await createCost({
+      organization_id: project?.organization_id,
       project_id:  projectId,
       category:    costCategory,
       description: costDesc,
@@ -154,6 +156,7 @@ export default function BudgetPage({ role, userId, overrideProjectId }: Props) {
     if (!projectId || !fcCost) return
     setSavingFc(true); setErro(null)
     const { error } = await createForecast({
+      organization_id: project?.organization_id,
       project_id:       projectId,
       cost_forecast:    parseFloat(fcCost),
       revenue_forecast: parseFloat(fcRevenue) || 0,

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getOrgProfiles } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import { toast } from './Toast'
 
 type MemberProfile = { id: string; full_name: string | null; email: string | null }
@@ -15,6 +16,7 @@ const ROLE_COLOR: Record<string, string> = { manager: '#0A6ED1', consultant: '#1
 type Props = { projectId: string; canManage: boolean }
 
 export default function ProjectTeamTab({ projectId, canManage }: Props) {
+  const { profile } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [resourcesByProfile, setResourcesByProfile] = useState<Record<string, ResourceMini>>({})
   const [allocations, setAllocations] = useState<AllocMini[]>([])
@@ -95,6 +97,7 @@ export default function ProjectTeamTab({ projectId, canManage }: Props) {
     const { error } = existingAllocId
       ? await sb.from('resource_allocations').update({ allocated_hours: hours }).eq('id', existingAllocId)
       : await sb.from('resource_allocations').insert({
+          organization_id: profile?.organization_id,
           resource_id: resource.id, project_id: projectId,
           allocated_hours: hours, start_date: new Date().toISOString().slice(0, 10),
         })

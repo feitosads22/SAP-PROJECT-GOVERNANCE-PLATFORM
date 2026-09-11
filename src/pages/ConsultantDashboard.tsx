@@ -12,6 +12,19 @@ type MyTask = {
 
 type HoursRow = { projectId: string; code: string; name: string; planned: number; logged: number }
 
+type MyProject = {
+  id: string; name: string; code: string; status: string; priority: string
+  progress: number; sap_module: string | null; end_date: string | null
+  nextMilestone?: { name: string; due_date: string } | null
+}
+
+const PROJ_STATUS_LABEL: Record<string,string> = {
+  draft:'Rascunho', active:'Ativo', on_hold:'Em espera', completed:'Concluído', cancelled:'Cancelado',
+}
+const PROJ_STATUS_COLOR: Record<string,string> = {
+  draft:'#94A3B8', active:'#16A34A', on_hold:'#D97706', completed:'#1D4ED8', cancelled:'#DC2626',
+}
+
 function toISODate(d: Date) { return d.toISOString().slice(0, 10) }
 function monthStart(d = new Date()) { return toISODate(new Date(d.getFullYear(), d.getMonth(), 1)) }
 function monthEnd(d = new Date())   { return toISODate(new Date(d.getFullYear(), d.getMonth() + 1, 0)) }
@@ -35,6 +48,7 @@ export default function ConsultantDashboard() {
   const [loading,  setLoading]  = useState(true)
   const [hoursRows, setHoursRows] = useState<HoursRow[]>([])
   const [hoursLoading, setHoursLoading] = useState(true)
+  const [myProjects, setMyProjects] = useState<MyProject[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
@@ -80,6 +94,28 @@ export default function ConsultantDashboard() {
     })
     setHoursRows(Object.values(rows).sort((a, b) => b.planned - a.planned))
     setHoursLoading(false)
+
+    // Info dos projetos em que ele está alocado — status, prioridade, progresso,
+    // módulo e próximo marco. NUNCA valores financeiros (budget/custo).
+    const projectIds = Object.keys(rows)
+    if (projectIds.length === 0) { setMyProjects([]); return }
+    const [{ data: projRows }, { data: mileRows }] = await Promise.all([
+      sb.from('projects').select('id,name,code,status,priority,progress,sap_module,end_date').in('id', projectIds),
+      sb.from('milestones').select('project_id,name,due_date')
+        .in('project_id', projectIds).in('status', ['not_started', 'in_progress'])
+        .order('due_date'),
+    ])
+    const nextMileByProject: Record<string, { name: string; due_date: string }> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;((mileRows ?? []) as any[]).forEach(m => {
+      if (!nextMileByProject[m.project_id]) nextMileByProject[m.project_id] = { name: m.name, due_date: m.due_date }
+    })
+    setMyProjects(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((projRows ?? []) as any[]).map(p => ({
+        ...p, nextMilestone: nextMileByProject[p.id] ?? null,
+      }))
+    )
   }
 
   useEffect(() => { void load(); void loadHours() }, [])
@@ -140,6 +176,38 @@ export default function ConsultantDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Projetos em que está alocado — sem valores financeiros */}
+      {myProjects.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+          {myProjects.map(p => (
+            <div key={p.id} className="card" style={{ cursor: 'pointer' }} onClick={() => navigate(`/projeto/${p.id}`)}>
+              <div className="card__body">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.5rem' }}>
+                  <span className="badge badge--brand">{p.code}</span>
+                  <span className="badge" style={{ background: (PROJ_STATUS_COLOR[p.status] ?? '#94A3B8') + '22', color: PROJ_STATUS_COLOR[p.status] ?? '#94A3B8' }}>
+                    {PROJ_STATUS_LABEL[p.status] ?? p.status}
+                  </span>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '.9375rem', marginBottom: '.5rem' }}>{p.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.5rem' }}>
+                  <div style={{ flex: 1, height: 6, background: 'var(--surface-3)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ width: `${p.progress}%`, height: '100%', background: 'var(--brand)', borderRadius: 99 }} />
+                  </div>
+                  <span style={{ fontSize: '.75rem', color: 'var(--subtle)' }}>{p.progress}%</span>
+                </div>
+                <div style={{ fontSize: '.75rem', color: 'var(--subtle)', display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+                  {p.sap_module && <span>🧩 {p.sap_module}</span>}
+                  {p.end_date && <span>📅 Prazo: {new Date(p.end_date).toLocaleDateString('pt-BR')}</span>}
+                  {p.nextMilestone && (
+                    <span>🔷 Próximo marco: {p.nextMilestone.name} ({new Date(p.nextMilestone.due_date).toLocaleDateString('pt-BR')})</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Horas lançadas × planejadas (mês atual) */}
       {!hoursLoading && hoursRows.length > 0 && (

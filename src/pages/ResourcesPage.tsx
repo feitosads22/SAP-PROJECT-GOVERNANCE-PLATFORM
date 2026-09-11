@@ -6,6 +6,7 @@ import {
 import type { Resource, ResourceAllocation, CapacityRow } from '../lib/resources'
 import { getProjects } from '../lib/api'
 import { toast } from '../components/Toast'
+import { useAuth } from '../contexts/AuthContext'
 import type { Project } from '../types/app.types'
 
 type ProfileMini = { id: string; full_name: string | null; email: string | null; role?: string }
@@ -35,6 +36,7 @@ function extractError(err: unknown): string {
 type Props = { role: string }
 
 export default function ResourcesPage({ role }: Props) {
+  const { profile } = useAuth()
   const [resources,   setResources]   = useState<ResourceRow[]>([])
   const [capacity,    setCapacity]    = useState<CapacityRow[]>([])
   const [allocations, setAllocations] = useState<AllocationRow[]>([])
@@ -96,6 +98,7 @@ export default function ResourcesPage({ role }: Props) {
     if (!fProfileId) return
     setSaving(true); setErro(null)
     const { error } = await createResource({
+      organization_id: profile?.organization_id ?? undefined,
       profile_id: fProfileId,
       seniority: fSeniority,
       sap_modules: fModules.split(',').map(s => s.trim()).filter(Boolean),
@@ -120,6 +123,7 @@ export default function ResourcesPage({ role }: Props) {
     if (!aProject || !aHours) return
     setASaving(true)
     const { error } = await createAllocation({
+      organization_id: profile?.organization_id ?? undefined,
       resource_id: resourceId,
       project_id: aProject,
       role_in_project: aRole.trim() || null,

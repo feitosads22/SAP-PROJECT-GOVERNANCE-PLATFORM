@@ -519,6 +519,8 @@ tbody tr:hover { background: var(--surface-2); }
 .kcard:hover { box-shadow: var(--shadow-sm); }
 .kcard:active { cursor: grabbing; }
 .kcard--overdue { border-left: 3px solid var(--danger); }
+.kcard--locked { cursor: not-allowed; background: var(--surface-2); }
+.kcard--locked:active { cursor: not-allowed; }
 .kcard__prio { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 4px 0 0 4px; }
 .kcard__title { font-size: .8125rem; font-weight: 600; color: var(--text); padding-left: .5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .kcard__meta { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; padding-left: .5rem; }

@@ -18,8 +18,27 @@ export default function ProfilePage() {
   const [pwdConf,   setPwdConf]   = useState('')
   const [pwdSaving, setPwdSaving] = useState(false)
   const [pwdMsg,    setPwdMsg]    = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ?? null)
+  const [uploading, setUploading] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !profile?.id) return
+    if (file.size > 2 * 1024 * 1024) { setErro('Imagem muito grande (máx. 2MB).'); return }
+    setUploading(true); setErro(null)
+    const ext = file.name.split('.').pop()
+    const path = `${profile.id}/avatar.${ext}`
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (upErr) { setErro(upErr.message); setUploading(false); return }
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+    const url = `${data.publicUrl}?t=${Date.now()}`
+    const { error: updErr } = await sb.from('profiles').update({ avatar_url: url }).eq('id', profile.id)
+    if (updErr) { setErro(updErr.message); setUploading(false); return }
+    setAvatarUrl(url)
+    setUploading(false)
+  }
 
   useEffect(() => {
     if (profile?.full_name) setFullName(profile.full_name)
@@ -62,8 +81,18 @@ export default function ProfilePage() {
       <div className="card" style={{ marginBottom: '1.25rem' }}>
         <div className="card__body">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-            <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800, flexShrink: 0 }}>
-              {initials}
+            <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Foto de perfil" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800 }}>
+                  {initials}
+                </div>
+              )}
+              <label style={{ position: 'absolute', bottom: -4, right: -4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '.75rem' }} title="Alterar foto">
+                {uploading ? '…' : '📷'}
+                <input type="file" accept="image/*" onChange={handleAvatarChange} disabled={uploading} style={{ display: 'none' }} />
+              </label>
             </div>
             <div>
               <div style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '.25rem' }}>

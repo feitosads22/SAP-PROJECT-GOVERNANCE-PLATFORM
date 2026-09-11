@@ -80,7 +80,7 @@ export default function TeamManagePage({ role: userRole }: Props) {
         .eq('id', existing.id)
       if (error) throw error
     } else {
-      // Cria novo perfil (usuário precisará fazer signup com esse email)
+      // Cria o perfil já vinculado à org (evita depender só do e-mail combinar no signup)
       const { error } = await sb.from('profiles').insert({
         email: email.trim().toLowerCase(),
         full_name: fullName.trim() || null,
@@ -88,6 +88,14 @@ export default function TeamManagePage({ role: userRole }: Props) {
         organization_id: profile?.organization_id,
       })
       if (error) throw error
+
+      // Envia o convite real por e-mail (Edge Function, usa service_role no servidor)
+      const { data: { session } } = await supabase.auth.getSession()
+      const { error: inviteErr } = await supabase.functions.invoke('invite-user', {
+        body: { email: email.trim().toLowerCase(), full_name: fullName.trim() || null, role: newRole },
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      })
+      if (inviteErr) setErro(`Perfil criado, mas o e-mail de convite falhou: ${inviteErr.message}`)
     }
     setEmail(''); setFullName(''); setNewRole('consultant')
     setShowForm(false); void loadAll()
@@ -213,7 +221,7 @@ export default function TeamManagePage({ role: userRole }: Props) {
                   </div>
                 </form>
                 <div style={{ marginTop:'.875rem', padding:'.75rem', background:'var(--info-bg)', borderRadius:'var(--r)', fontSize:'.8125rem', color:'var(--info)' }}>
-                  ℹ️ O usuário precisará criar conta com este e-mail para acessar o sistema. Após o cadastro, o perfil será atualizado automaticamente.
+                  ℹ️ Um e-mail de convite real será enviado. O usuário define a senha pelo link recebido.
                 </div>
               </div>
             </div>

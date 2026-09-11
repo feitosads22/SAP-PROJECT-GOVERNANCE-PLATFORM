@@ -33,8 +33,11 @@ export default function Projects() {
   const [filterPriority, setFilterPriority] = useState('')
   const [filterModule,   setFilterModule]   = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 12
 
   useEffect(() => { setSearch(searchParams.get('q') ?? '') }, [searchParams])
+  useEffect(() => { setPage(1) }, [search, filterStatus, filterPriority, filterModule])
 
   useEffect(() => {
     getProjects().then(({ data, error }) => {
@@ -56,6 +59,21 @@ export default function Projects() {
   })
 
   const modules = [...new Set(projects.map(p => p.sap_module).filter(Boolean))] as string[]
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageSafe = Math.min(page, totalPages)
+  const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE)
+
+  function Pagination() {
+    if (totalPages <= 1) return null
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '.5rem', marginTop: '1.25rem' }}>
+        <button className="btn-ghost btn-sm" disabled={pageSafe <= 1} onClick={() => setPage(p => p - 1)}>← Anterior</button>
+        <span style={{ fontSize: '.8125rem', color: 'var(--subtle)' }}>Página {pageSafe} de {totalPages}</span>
+        <button className="btn-ghost btn-sm" disabled={pageSafe >= totalPages} onClick={() => setPage(p => p + 1)}>Próxima →</button>
+      </div>
+    )
+  }
 
   function ProgressBar({ value }: { value: number }) {
     const color = value >= 75 ? '#16A34A' : value >= 40 ? '#0A6ED1' : '#F59E0B'
@@ -139,8 +157,9 @@ export default function Projects() {
           <p className="empty-state__desc">Tente ajustar os filtros ou criar um novo projeto.</p>
         </div>
       ) : view === 'cards' ? (
+        <>
         <div className="project-grid">
-          {filtered.map(p => (
+          {paged.map(p => (
             <div key={p.id} className="pcard" onClick={() => navigate(`/projeto/${p.id}`)}>
               <div className="pcard__top">
                 <span className="pcard__code">{p.code}</span>
@@ -175,7 +194,10 @@ export default function Projects() {
             </div>
           ))}
         </div>
+        <Pagination />
+        </>
       ) : (
+        <>
         <div className="table-wrap">
           <table>
             <thead>
@@ -185,7 +207,7 @@ export default function Projects() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(p => (
+              {paged.map(p => (
                 <tr key={p.id} style={{ cursor:'pointer' }} onClick={() => navigate(`/projeto/${p.id}`)}>
                   <td>
                     <span style={{ fontWeight:700, color:'var(--brand)', fontSize:'.8125rem' }}>{p.code}</span>
@@ -224,6 +246,8 @@ export default function Projects() {
             </tbody>
           </table>
         </div>
+        <Pagination />
+        </>
       )}
       </div>
       {showCreate && (

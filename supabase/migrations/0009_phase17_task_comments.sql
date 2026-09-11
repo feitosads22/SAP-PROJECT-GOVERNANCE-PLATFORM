@@ -39,6 +39,6 @@ create policy task_comments_insert on public.task_comments for insert
 
 drop policy if exists task_comments_delete on public.task_comments;
 create policy task_comments_delete on public.task_comments for delete
-  using (organization_id = current_org_id() and (author_id = auth.uid() or current_role() in ('admin','manager')));
+  using (organization_id = current_org_id() and (author_id = auth.uid() or "current_role"() in ('admin','manager')));
 
 commit;

@@ -139,9 +139,16 @@ resource_capacity       -- capacidade e utilização por recurso
 
 ### Tabelas de recursos
 ```sql
-resources           -- consultores/recursos (seniority, email, hourly_rate)
-resource_allocations-- alocação mensal de recurso a projeto
-timesheets          -- apontamento de horas (status: draft|submitted|approved|rejected)
+resources           -- consultores/recursos (profile_id, seniority, weekly_capacity_hours, hourly_rate)
+resource_allocations-- alocação de recurso a projeto (allocated_hours, start_date, end_date)
+timesheets          -- apontamento de horas (status derivado de approved_at/rejected_at, sem coluna status)
+```
+View `resource_capacity` calcula utilização (hours_this_week/month, utilization_pct, capacity_status).
+
+### Tabelas de colaboração (Fase 17)
+```sql
+task_comments        -- comentários em tarefas, com @menção (notifica via create_notification)
+task_history          -- histórico de alterações de tarefa (já existe desde a Fase 1)
 ```
 
 ### Tabelas de conhecimento / IA
@@ -264,6 +271,12 @@ ask-ai (versão 2, ACTIVE)
   - Adiciona contexto do projeto via portfolio_summary
   - Chama Anthropic API (claude-haiku)
   - Salva em ai_conversations
+
+invite-user (Fase 18 — requer deploy manual, ver supabase/functions/invite-user)
+  POST /functions/v1/invite-user
+  Body: { email: string, full_name?: string, role?: string }
+  - Só admin/manager podem chamar
+  - auth.admin.inviteUserByEmail() via service_role (nunca no frontend)
 ```
 
 ---
@@ -274,13 +287,14 @@ ask-ai (versão 2, ACTIVE)
 task-evidence      -- evidências de tarefas
 project-documents  -- documentos do projeto (usados por ProjectDocuments)
 project-manuals    -- manuais (usados por KnowledgePage)
+avatars            -- foto de perfil (Fase 18), leitura pública, escrita só do dono
 ```
 
 ---
 
 ## Estado Atual — O que está PRONTO
 
-### Fases concluídas (1–13)
+### Fases concluídas (1–18)
 
 | Fase | Entregue |
 |------|----------|
@@ -297,29 +311,28 @@ project-manuals    -- manuais (usados por KnowledgePage)
 | 11   | EditProjectModal, EditTaskModal, Toast, Export CSV, 404 |
 | 12   | GlobalSearch (topbar funcional), criar/excluir marcos no Gantt |
 | 13   | Timesheet com aprovação/rejeição, FinancialChart planejado×realizado |
+| 14   | Alocação de recursos (ResourcesPage), filtro de data no Timesheet, relatório de horas por projeto, dashboard consultor (horas lançadas × planejadas). Corrigiu bugs de schema pré-existentes em Resources/Timesheet |
+| 15   | Notificações automáticas (tarefa vencendo/atrasada, marco próximo, CR aprovado/rejeitado, timesheet rejeitado) via pg_cron + triggers; Realtime no badge/centro de notificações |
+| 16   | Relatórios em PDF (portfólio, status por projeto), relatório de horas por recurso, filtro de recurso no Timesheet |
+| 17   | Comentários em tarefas com @menção, histórico de alterações (task_history), feed de atividades recentes no ProjectDetail |
+| 18   | Paginação (Projects), code splitting (lazy/Suspense), PWA básico, upload de foto de perfil, convite real por e-mail (Edge Function), testes de isolamento RLS |
 
 ---
 
 ## O que FALTA implementar (backlog)
 
 ### Alta prioridade
-- [ ] **Envio de convite por email** (hoje cria o perfil mas não envia email real)
-- [ ] **Paginação** nas tabelas com muitos registros
-- [ ] **Exportar relatório PDF** (hoje só CSV)
-- [ ] **Filtro de data** no timesheet (por semana/mês)
-- [ ] **Alocação de recursos** a projetos via ResourcesPage (tabela `resource_allocations`)
 - [ ] **Editar/excluir marcos** no cronograma via lista (hoje só no Gantt)
+- [ ] Deploy manual da Edge Function `invite-user` (código pronto, não deployado por padrão) e configurar SMTP em Auth para o e-mail de convite realmente sair
+- [ ] Estender paginação (feita só em `Projects.tsx`) para as demais listas grandes (TeamManagePage, DemandsPage, DocumentsPage)
 
 ### Média prioridade
-- [ ] **Dashboard do consultor** — mostrar horas lançadas vs planejadas
-- [ ] **Relatório de horas por projeto** exportável
-- [ ] **Notificações automáticas** (triggers no banco para tarefas vencendo, CRs aprovados)
-- [ ] **Upload de foto de perfil**
-- [ ] **Comentários em tarefas**
+- [ ] Renomear `current_role()` para `current_app_role()` (colide com palavra reservada do Postgres — hoje funciona só porque as policies sempre qualificam com `public.`, mas exigiu citar como `"current_role"()` na Fase 17)
+- [ ] Ícones PWA reais (PNG) — hoje usa um SVG placeholder simples
 
 ### Baixa prioridade
 - [ ] **Dark mode**
-- [ ] **PWA / offline support**
+- [ ] **Service worker / offline support** (o manifest.json da Fase 18 cobre só instalabilidade, não cache offline)
 - [ ] **Integração com calendário** (Google Calendar)
 
 ---

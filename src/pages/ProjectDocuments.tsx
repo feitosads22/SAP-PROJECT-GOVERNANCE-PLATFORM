@@ -83,7 +83,7 @@ export default function ProjectDocuments({ projectId, role }: Props) {
     setUploading(true); setErro(null)
     try {
       const ext  = file.name.split('.').pop()
-      const path = `${projectId}/${Date.now()}_${file.name}`
+      const path = `${profile?.organization_id}/${projectId}/${Date.now()}_${file.name}`
       const { error: upErr } = await supabase.storage
         .from('project-documents')
         .upload(path, file, { contentType: file.type })
@@ -125,7 +125,7 @@ export default function ProjectDocuments({ projectId, role }: Props) {
       if (!result.ok) { toast(result.reason, 'warn'); return }
 
       const { blob, fileName, isoDate } = result
-      const path = `${projectId}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      const path = `${profile?.organization_id}/${projectId}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
       const { error: upErr } = await supabase.storage
         .from('project-documents')
         .upload(path, blob, { contentType: 'application/pdf' })

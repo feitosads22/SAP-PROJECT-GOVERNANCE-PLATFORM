@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { generateProjectStatusReport } from '../lib/statusReport'
+import { toast } from '../components/Toast'
 
 const CATEGORIES = [
   { v:'general',         l:'Geral' },
@@ -43,13 +45,14 @@ function mimeIcon(m:string|null){
 }
 
 export default function ProjectDocuments({ projectId, role }: Props) {
-  const { profile } = useAuth()
+  const { profile, organization } = useAuth()
   const [docs,    setDocs]    = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
   const [erro,    setErro]    = useState<string|null>(null)
   const [filterCat, setFilterCat] = useState('')
   const [search,    setSearch]    = useState('')
   const [uploading, setUploading] = useState(false)
+  const [gerandoReport, setGerandoReport] = useState(false)
   const [showForm,  setShowForm]  = useState(false)
   const [title,     setTitle]     = useState('')
   const [desc,      setDesc]      = useState('')
@@ -87,6 +90,7 @@ export default function ProjectDocuments({ projectId, role }: Props) {
       if (upErr) throw upErr
 
       const { error: dbErr } = await sb.from('project_documents').insert({
+        organization_id: profile?.organization_id,
         project_id:   projectId,
         title:        title.trim(),
         description:  desc.trim() || null,
@@ -112,6 +116,43 @@ export default function ProjectDocuments({ projectId, role }: Props) {
       .from('project-documents')
       .createSignedUrl(doc.storage_path, 300)
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  async function handleGenerateStatusReport() {
+    setGerandoReport(true); setErro(null)
+    try {
+      const result = await generateProjectStatusReport(projectId, organization?.name ?? undefined)
+      if (!result.ok) { toast(result.reason, 'warn'); return }
+
+      const { blob, fileName, isoDate } = result
+      const path = `${projectId}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      const { error: upErr } = await supabase.storage
+        .from('project-documents')
+        .upload(path, blob, { contentType: 'application/pdf' })
+      if (upErr) throw upErr
+
+      const { error: dbErr } = await sb.from('project_documents').insert({
+        organization_id: profile?.organization_id,
+        project_id:   projectId,
+        title:        `Status Report — ${isoDate}`,
+        description:  'Gerado automaticamente para a atualização semanal com o cliente.',
+        category:     'report',
+        storage_path: path,
+        file_name:    fileName,
+        file_size:    blob.size,
+        mime_type:    'application/pdf',
+        version:      isoDate,
+        uploaded_by:  profile?.id,
+      })
+      if (dbErr) throw dbErr
+
+      toast('Status report gerado e salvo em Documentos.', 'ok')
+      void load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Erro ao gerar status report.', 'error')
+    } finally {
+      setGerandoReport(false)
+    }
   }
 
   async function handleDelete(doc: Doc) {
@@ -149,6 +190,11 @@ export default function ProjectDocuments({ projectId, role }: Props) {
         {canEdit && (
           <button className="btn-sm" onClick={()=>setShowForm(v=>!v)}>
             {showForm ? '✕ Cancelar' : '+ Adicionar'}
+          </button>
+        )}
+        {canEdit && (
+          <button className="btn-secondary btn-sm" onClick={handleGenerateStatusReport} disabled={gerandoReport}>
+            {gerandoReport ? 'Gerando…' : '📄 Gerar Status Report'}
           </button>
         )}
       </div>

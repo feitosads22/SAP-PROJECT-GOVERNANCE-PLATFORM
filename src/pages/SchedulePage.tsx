@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from '../components/Toast'
+import { useAuth } from '../contexts/AuthContext'
+import { parseScheduleExcel } from '../lib/scheduleImport'
 
 type Milestone = {
   id: string; name: string; description: string | null
@@ -58,6 +60,7 @@ type Props = { projectId?: string; role: string }
 export default function SchedulePage({ projectId: propId, role }: Props) {
   const params    = useParams<{ id: string }>()
   const projectId = propId ?? params.id
+  const { profile } = useAuth()
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [tasks,      setTasks]      = useState<Task[]>([])
   const [loading,    setLoading]    = useState(true)
@@ -69,6 +72,8 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
   const [milDesc,    setMilDesc]    = useState('')
   const [milCrit,    setMilCrit]    = useState('media')
   const [savingMil,  setSavingMil]  = useState(false)
+  const [importing,  setImporting]  = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   const canEdit = ['admin','manager'].includes(role)
@@ -101,6 +106,59 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
     if (error) { toast(error.message, 'error') }
     else { toast('Marco criado!', 'ok'); setMilName(''); setMilDate(''); setMilDesc(''); setMilCrit('media'); setShowMilForm(false); void load() }
     setSavingMil(false)
+  }
+
+  async function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !projectId) return
+
+    setImporting(true)
+    try {
+      const { rows, errors } = await parseScheduleExcel(file)
+      if (rows.length === 0) {
+        toast(errors[0] ?? 'Nenhuma linha reconhecida na planilha.', 'error')
+        return
+      }
+
+      // Resolve e-mail -> profile.id (quando a coluna Responsável veio preenchida)
+      const emails = [...new Set(rows.map(r => r.assignee_email).filter(Boolean))] as string[]
+      let emailToId: Record<string, string> = {}
+      if (emails.length > 0) {
+        const { data: profs } = await sb.from('profiles').select('id,email').in('email', emails)
+        emailToId = Object.fromEntries((profs ?? []).map((p: { id: string; email: string }) => [p.email.toLowerCase(), p.id]))
+      }
+
+      const payload = rows.map(r => ({
+        organization_id: profile?.organization_id,
+        project_id: projectId,
+        title: r.title,
+        frente: r.frente,
+        sap_activate_phase: r.sap_activate_phase,
+        priority: r.priority,
+        planned_start_date: r.planned_start_date,
+        planned_end_date: r.planned_end_date,
+        estimated_hours: r.estimated_hours,
+        progress: r.progress,
+        status: r.progress >= 100 ? 'completed' : 'todo',
+        assignee_id: r.assignee_email ? (emailToId[r.assignee_email] ?? null) : null,
+      }))
+
+      const { error } = await sb.from('tasks').insert(payload)
+      if (error) throw error
+
+      const notFound = emails.filter(e2 => !emailToId[e2])
+      toast(
+        `${payload.length} tarefa(s) importada(s) do Excel.` +
+        (notFound.length ? ` ${notFound.length} responsável(is) não encontrado(s) por e-mail.` : ''),
+        'ok'
+      )
+      void load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Erro ao importar a planilha.', 'error')
+    } finally {
+      setImporting(false)
+    }
   }
 
   async function deleteMilestone(id: string) {
@@ -150,8 +208,21 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
           {phases.map(p=><option key={p} value={p}>{p}</option>)}
         </select>
         {filterPhase && <button className="btn-ghost btn-sm" onClick={()=>setFilterPhase('')}>Limpar</button>}
-        {canEdit && <button className="btn-sm" onClick={()=>setShowMilForm(v=>!v)} style={{ marginLeft:'auto' }}>{showMilForm?'✕':'+ Marco'}</button>}
+        {canEdit && (
+          <div style={{ marginLeft:'auto', display:'flex', gap:'.5rem' }}>
+            <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display:'none' }} onChange={handleImportExcel} />
+            <button className="btn-secondary btn-sm" disabled={importing} onClick={() => importInputRef.current?.click()}>
+              {importing ? 'Importando…' : '📤 Importar Excel'}
+            </button>
+            <button className="btn-sm" onClick={()=>setShowMilForm(v=>!v)}>{showMilForm?'✕':'+ Marco'}</button>
+          </div>
+        )}
       </div>
+      {canEdit && (
+        <p className="sutil" style={{ fontSize:'.75rem', marginTop:'-.75rem', marginBottom:'1rem' }}>
+          A planilha deve ter colunas como Título, Frente, Fase, Prioridade, Início, Fim, Horas Estimadas, Progresso e Responsável (e-mail) — os nomes são flexíveis quanto a acentos/maiúsculas.
+        </p>
+      )}
 
       {showMilForm && canEdit && (
         <form onSubmit={saveMilestone} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:'1rem', marginBottom:'1rem', display:'flex', gap:'.75rem', flexWrap:'wrap', alignItems:'flex-end' }}>

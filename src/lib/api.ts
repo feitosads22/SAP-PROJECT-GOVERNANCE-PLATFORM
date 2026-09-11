@@ -180,9 +180,10 @@ export async function saveAttachment(data: {
   file_size: number
   mime_type: string
   uploaded_by: string
+  bucket?: string
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase.from('attachments') as any).insert(data)
+  return (supabase.from('attachments') as any).insert({ bucket: 'task-evidence', ...data })
 }
 
 export async function getAttachmentsByEvidence(evidenceId: string) {

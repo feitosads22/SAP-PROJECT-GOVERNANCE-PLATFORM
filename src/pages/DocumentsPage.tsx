@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProjects } from '../lib/api'
-import { generateWeeklyStatusReport } from '../lib/statusReport'
-import { useAuth } from '../contexts/AuthContext'
-import { toast } from '../components/Toast'
 import type { Project } from '../types/app.types'
 
 type Manual = {
@@ -33,9 +30,7 @@ function fileSize(bytes: number | null) {
 }
 
 export default function DocumentsPage() {
-  const { organization } = useAuth()
   const [tab,      setTab]      = useState<'manuals'|'kb'>('manuals')
-  const [gerandoReport, setGerandoReport] = useState(false)
   const [manuals,  setManuals]  = useState<Manual[]>([])
   const [articles, setArticles] = useState<Article[]>([])
   const [projects, setProjects] = useState<Project[]>([])
@@ -72,18 +67,6 @@ export default function DocumentsPage() {
     return true
   })
 
-  async function handleGenerateStatusReport() {
-    setGerandoReport(true)
-    try {
-      const result = await generateWeeklyStatusReport(organization?.name ?? undefined)
-      if (!result.ok) toast(result.reason, 'warn')
-    } catch (e) {
-      toast(e instanceof Error ? e.message : 'Erro ao gerar status report.', 'error')
-    } finally {
-      setGerandoReport(false)
-    }
-  }
-
   const mimeIcon = (mime: string | null) => {
     if (!mime) return '📄'
     if (mime.includes('pdf')) return '📕'
@@ -102,9 +85,6 @@ export default function DocumentsPage() {
           <p className="page-header__sub">Central de documentos e base de conhecimento</p>
         </div>
         <div className="page-header__actions">
-          <button className="btn-secondary" onClick={handleGenerateStatusReport} disabled={gerandoReport}>
-            {gerandoReport ? 'Gerando…' : '📄 Status Report Semanal'}
-          </button>
           <div style={{ display:'flex', gap:'.25rem', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--r)', padding:'.2rem' }}>
             {(['manuals','kb'] as const).map(v => (
               <button key={v} onClick={() => setTab(v)}
@@ -115,9 +95,6 @@ export default function DocumentsPage() {
           </div>
         </div>
       </div>
-      <p className="page-header__sub" style={{ marginTop:'-.5rem', marginBottom:'1rem' }}>
-        O status report gera um PDF com uma página por projeto ativo (health, budget, marcos, riscos e issues) — pronto para enviar ao cliente na atualização semanal.
-      </p>
 
       {/* Search */}
       <div className="filter-bar">

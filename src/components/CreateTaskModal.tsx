@@ -16,6 +16,30 @@ type Props = {
 }
 
 const SAP_PHASES = ['Descobrir','Preparar','Explorar','Realizar','Implementar','Executar'] as const
+
+// Catálogo padrão de módulos SAP — sempre disponível no combo, mesmo que o
+// projeto ainda não tenha esses módulos cadastrados em project_modules.
+const SAP_MODULE_CATALOG: { code: string; name: string }[] = [
+  { code: 'FI',   name: 'Financeiro' },
+  { code: 'CO',   name: 'Controlling' },
+  { code: 'MM',   name: 'Materiais' },
+  { code: 'SD',   name: 'Vendas' },
+  { code: 'PP',   name: 'Produção' },
+  { code: 'QM',   name: 'Qualidade' },
+  { code: 'PM',   name: 'Manutenção' },
+  { code: 'PS',   name: 'Projetos' },
+  { code: 'WM',   name: 'Armazém / EWM' },
+  { code: 'TR',   name: 'Tesouraria' },
+  { code: 'HCM',  name: 'Recursos Humanos' },
+  { code: 'BW/BO',name: 'Business Warehouse / BI' },
+  { code: 'ABAP', name: 'Desenvolvimento ABAP' },
+  { code: 'BASIS',name: 'Basis' },
+  { code: 'FIORI',name: 'Fiori / UX' },
+  { code: 'S/4HANA', name: 'S/4HANA Core' },
+  { code: 'SF',   name: 'SuccessFactors' },
+  { code: 'ARIBA',name: 'Ariba' },
+  { code: 'TAX',  name: 'Fiscal / TAX' },
+]
 const PRIORITIES  = ['low','medium','high','critical'] as const
 const PRIO_LABEL: Record<string,string> = {
   low:'Baixa', medium:'Média', high:'Alta', critical:'Crítica',
@@ -43,7 +67,7 @@ export default function CreateTaskModal({
   const [priority,         setPriority]         = useState('medium')
   const [assigneeId,       setAssigneeId]       = useState('')
   const [reviewerId,       setReviewerId]       = useState('')
-  const [moduleId,         setModuleId]         = useState('')
+  const [moduleCode,       setModuleCode]       = useState('')
   const [phaseId,          ] = useState('')  // kept for phase_id in insert
   const [sapPhase,         setSapPhase]         = useState('')
   const [frente,           setFrente]           = useState('')
@@ -67,7 +91,33 @@ export default function CreateTaskModal({
   async function loadProjectData(pid: string) {
     const { data: mData, error: mErr } = await (supabase as any).from('project_modules').select('id,name,code').eq('project_id', pid).order('sort_order')
     if (!mErr) setModules(mData ?? [])
-    setModuleId('')
+    setModuleCode('')
+  }
+
+  // Combo mostra sempre o catálogo padrão de módulos SAP + qualquer módulo
+  // específico já cadastrado neste projeto que não esteja no catálogo.
+  const moduleOptions = (() => {
+    const byCode = new Map(SAP_MODULE_CATALOG.map(m => [m.code, m.name]))
+    modules.forEach(m => { if (!byCode.has(m.code)) byCode.set(m.code, m.name) })
+    return Array.from(byCode.entries()).map(([code, name]) => ({ code, name }))
+      .sort((a, b) => a.code.localeCompare(b.code))
+  })()
+
+  // Garante um project_modules para o código escolhido, criando na hora se
+  // o projeto ainda não tinha esse módulo cadastrado.
+  async function resolveModuleId(code: string): Promise<string | undefined> {
+    if (!code) return undefined
+    const existing = modules.find(m => m.code === code)
+    if (existing) return existing.id
+    const catalogName = SAP_MODULE_CATALOG.find(m => m.code === code)?.name ?? code
+    const { data, error } = await (supabase as any)
+      .from('project_modules')
+      .insert({ organization_id: organizationId, project_id: projectId, name: catalogName, code })
+      .select('id,name,code')
+      .single()
+    if (error || !data) return undefined
+    setModules(prev => [...prev, data])
+    return data.id
   }
 
   async function handleCreate() {
@@ -75,13 +125,18 @@ export default function CreateTaskModal({
     if (!projectId)    { setErro('Selecione um projeto.'); return }
     setSaving(true); setErro(null)
 
+    const resolvedModuleId = moduleCode ? await resolveModuleId(moduleCode) : undefined
+    if (moduleCode && !resolvedModuleId) {
+      setErro('Não foi possível cadastrar esse módulo no projeto (peça a um admin/gerente). A tarefa será criada sem módulo.')
+    }
+
     const payload: Database['public']['Tables']['tasks']['Insert'] & { frente?: string } = {
       project_id: projectId, organization_id: organizationId,
       title: title.trim(), description: description || undefined,
       priority,
       assignee_id:        assigneeId      || undefined,
       reviewer_id:        reviewerId      || undefined,
-      module_id:          moduleId        || undefined,
+      module_id:          resolvedModuleId,
       phase_id:           phaseId         || undefined,
       sap_activate_phase: sapPhase        || undefined,
       frente:             frente.trim()   || undefined,
@@ -156,17 +211,12 @@ export default function CreateTaskModal({
 
             <div>
               <label>Módulo SAP</label>
-              <select value={moduleId} onChange={e => setModuleId(e.target.value)}>
+              <select value={moduleCode} onChange={e => setModuleCode(e.target.value)}>
                 <option value="">— Nenhum —</option>
-                {modules.map(m => (
-                  <option key={m.id} value={m.id}>{m.code} — {m.name}</option>
+                {moduleOptions.map(m => (
+                  <option key={m.code} value={m.code}>{m.code} — {m.name}</option>
                 ))}
               </select>
-              {modules.length === 0 && projectId && (
-                <p className="sutil" style={{ marginTop: '.25rem', fontSize: '.75rem' }}>
-                  Este projeto ainda não tem módulos cadastrados.
-                </p>
-              )}
             </div>
 
             <div>

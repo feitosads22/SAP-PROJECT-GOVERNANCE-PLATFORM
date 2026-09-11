@@ -61,6 +61,8 @@ export default function Dashboard() {
   const [activities,  setActivities]  = useState<AuditRow[]>([])
   const [milestones,  setMilestones]  = useState<Milestone[]>([])
   const [loading,     setLoading]     = useState(true)
+  const [showAllMilestones, setShowAllMilestones] = useState(false)
+  const [showAllActivities, setShowAllActivities] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
@@ -69,11 +71,11 @@ export default function Dashboard() {
     const [rPort, rProj, rAudit, rMile] = await Promise.all([
       sb.from('portfolio_summary').select('*').order('project_code'),
       sb.from('projects').select('*').order('created_at', { ascending: false }),
-      sb.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(6),
+      sb.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50),
       sb.from('milestones').select('*, project:projects(code)')
         .in('status',['not_started','in_progress'])
         .not('due_date','is',null)
-        .order('due_date').limit(6),
+        .order('due_date').limit(50),
     ])
     if (!rPort.error)  setPortfolio(rPort.data ?? [])
     if (!rProj.error)  setProjects(rProj.data ?? [])
@@ -360,12 +362,16 @@ export default function Dashboard() {
                 <span className="card__title-icon">📅</span>
                 Próximos Marcos
               </span>
-              <button className="card__link">Ver todos →</button>
+              {milestones.length > 6 && (
+                <button className="card__link" onClick={() => setShowAllMilestones(v => !v)}>
+                  {showAllMilestones ? '← Ver menos' : 'Ver todos →'}
+                </button>
+              )}
             </div>
             <div className="card__body">
               {loading ? <p className="sutil">Carregando…</p> :
                milestones.length === 0 ? <p className="sutil">Nenhum marco próximo.</p> :
-               milestones.map(m => {
+               (showAllMilestones ? milestones : milestones.slice(0, 6)).map(m => {
                 const d = new Date(m.due_date)
                 const today = new Date(); const in14 = new Date(Date.now() + 14*86400000); const sched = d < today ? 'atrasado' : d < in14 ? 'critico' : 'ok'
                 return (
@@ -396,12 +402,16 @@ export default function Dashboard() {
                 <span className="card__title-icon">🕐</span>
                 Últimas Atividades
               </span>
-              <button className="card__link">Ver todas →</button>
+              {activities.length > 6 && (
+                <button className="card__link" onClick={() => setShowAllActivities(v => !v)}>
+                  {showAllActivities ? '← Ver menos' : 'Ver todas →'}
+                </button>
+              )}
             </div>
             <div className="card__body">
               {loading ? <p className="sutil">Carregando…</p> :
                activities.length === 0 ? <p className="sutil">Sem atividades recentes.</p> :
-               activities.map(a => {
+               (showAllActivities ? activities : activities.slice(0, 6)).map(a => {
                 const cfg = activityIcon[a.action] ?? activityIcon.default
                 return (
                   <div key={a.id} className="activity-item">

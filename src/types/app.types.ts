@@ -6,6 +6,11 @@ export type Task = Database['public']['Tables']['tasks']['Row'] & {
   progress?: number
   description?: string | null
   frente?: string | null
+  module?: { id: string; name: string; code: string } | null
+  phase?: { id: string; name: string; code: string } | null
+  assignee?: { id: string; full_name: string | null; email: string | null } | null
+  reviewer?: { id: string; full_name: string | null; email: string | null } | null
+  evidences?: { id: string; status: string; attachments: { id: string; file_name: string }[] }[]
 }
 export type Project = Database['public']['Tables']['projects']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']

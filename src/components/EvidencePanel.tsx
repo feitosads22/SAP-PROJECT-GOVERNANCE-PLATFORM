@@ -23,6 +23,13 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: 'Rejeitada',
 }
 
+const PRIO_LABEL: Record<string, string> = { low: 'Baixa', medium: 'Média', high: 'Alta', critical: 'Crítica' }
+
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('pt-BR')
+}
+
 const MIME_LABELS: Record<string, string> = {
   'application/pdf': 'PDF',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word',
@@ -245,6 +252,60 @@ export default function EvidencePanel({ task, role, userId, onClose }: Props) {
         {erro && <p className="erro" style={{ padding: '0 1.5rem' }}>{erro}</p>}
 
         <div className="panel__body">
+          {/* Resumo da tarefa — visível assim que o card é aberto */}
+          <div className="card" style={{ marginBottom: '1.25rem' }}>
+            <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+              {task.description && <p style={{ fontSize: '.875rem', color: 'var(--text)' }}>{task.description}</p>}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '.5rem' }}>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Responsável</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{task.assignee?.full_name ?? task.assignee?.email ?? '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Revisor</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{task.reviewer?.full_name ?? task.reviewer?.email ?? '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Prioridade</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{PRIO_LABEL[task.priority ?? ''] ?? task.priority ?? '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Módulo SAP</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{task.module ? `${task.module.code} — ${task.module.name}` : '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Fase</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{task.phase?.name ?? task.sap_activate_phase ?? '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Prazo</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{fmtDate(task.planned_end_date)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Progresso</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{task.progress ?? 0}%</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)' }}>Horas estimadas</div>
+                  <div style={{ fontSize: '.8125rem', fontWeight: 600 }}>{task.estimated_hours ?? '—'}</div>
+                </div>
+              </div>
+
+              {(task.evidences ?? []).flatMap(ev => ev.attachments ?? []).length > 0 && (
+                <div>
+                  <div style={{ fontSize: '.625rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--subtle)', marginBottom: '.25rem' }}>
+                    Arquivos de evidência anexados
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.125rem' }}>
+                    {(task.evidences ?? []).flatMap(ev => ev.attachments ?? []).map(f => (
+                      <span key={f.id} style={{ fontSize: '.8125rem' }}>📎 {f.file_name}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {carregando && <p className="sutil">Carregando…</p>}
 
           {!carregando && evidences.length === 0 && (

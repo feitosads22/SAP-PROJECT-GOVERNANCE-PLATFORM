@@ -130,6 +130,7 @@ export default function TeamManagePage({ role: userRole }: Props) {
     if (!allocProject || !allocUser) return
     setSavingAlloc(true); setErro(null)
     const { error } = await sb.from('project_members').upsert({
+      organization_id: profile?.organization_id,
       project_id: allocProject,
       user_id:    allocUser,
       role:       allocRole,

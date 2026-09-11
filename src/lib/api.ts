@@ -24,7 +24,13 @@ export async function getTasksByProject(projectId: string) {
     .select(`
       *,
       module:project_modules(id, name, code),
-      phase:phases(id, name, code)
+      phase:phases(id, name, code),
+      assignee:profiles!tasks_assignee_id_fkey(id, full_name, email),
+      reviewer:profiles!tasks_reviewer_id_fkey(id, full_name, email),
+      evidences:task_evidences(
+        id, status,
+        attachments(id, file_name)
+      )
     `)
     .eq('project_id', projectId)
     .order('updated_at', { ascending: false })
@@ -36,7 +42,14 @@ export async function getMyTasks(userId: string) {
     .select(`
       *,
       project:projects(id, name, code),
-      module:project_modules(id, name, code)
+      module:project_modules(id, name, code),
+      phase:phases(id, name, code),
+      assignee:profiles!tasks_assignee_id_fkey(id, full_name, email),
+      reviewer:profiles!tasks_reviewer_id_fkey(id, full_name, email),
+      evidences:task_evidences(
+        id, status,
+        attachments(id, file_name)
+      )
     `)
     .eq('assignee_id', userId)
     .not('status', 'in', '(completed,cancelled)')

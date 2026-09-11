@@ -34,6 +34,8 @@ function TaskCard({ task, onClick, overlay = false }:
   const sapPhase = (task as unknown as Record<string,unknown>)['sap_activate_phase'] as string | undefined
   const overdue = task.planned_end_date && task.status !== 'completed' && task.status !== 'cancelled'
     ? new Date(task.planned_end_date) < new Date() : false
+  const responsavel = task.assignee?.full_name ?? task.assignee?.email ?? null
+  const arquivosEvidencia = (task.evidences ?? []).flatMap(ev => ev.attachments ?? [])
 
   return (
     <div
@@ -45,6 +47,14 @@ function TaskCard({ task, onClick, overlay = false }:
     >
       <div className="kcard__prio" style={{ background: PRIORITY_COLOR[prio] }} />
       <p className="kcard__title">{task.title}</p>
+
+      <div className="kcard__assignee" style={{ display:'flex', alignItems:'center', gap:'.375rem', margin:'.25rem 0' }}>
+        <div style={{ width:20, height:20, borderRadius:'50%', background:'var(--brand-light)', color:'var(--brand)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'.625rem', flexShrink:0 }}>
+          {(responsavel?.[0] ?? '?').toUpperCase()}
+        </div>
+        <span style={{ fontSize:'.75rem', color:'var(--subtle)' }}>{responsavel ?? 'Sem responsável'}</span>
+      </div>
+
       <div className="kcard__meta">
         <span className="badge" style={{ background: PRIORITY_COLOR[prio] + '22', color: PRIORITY_COLOR[prio], borderColor: PRIORITY_COLOR[prio] + '44' }}>
           {PRIORITY_LABEL[prio]}
@@ -58,6 +68,16 @@ function TaskCard({ task, onClick, overlay = false }:
         {task.requires_evidence && <span className="badge badge--ev">Ev.</span>}
         {task.progress > 0 && <span className="badge">{task.progress}%</span>}
       </div>
+
+      {arquivosEvidencia.length > 0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'.125rem', marginTop:'.25rem' }}>
+          {arquivosEvidencia.map(f => (
+            <span key={f.id} style={{ fontSize:'.6875rem', color:'var(--subtle)', display:'flex', alignItems:'center', gap:'.25rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              📎 {f.file_name}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

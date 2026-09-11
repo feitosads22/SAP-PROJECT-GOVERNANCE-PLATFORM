@@ -4,13 +4,13 @@ import autoTable from 'jspdf-autotable'
 const BRAND = '#0A6ED1'
 const DARK = '#071B33'
 
-export function newReportDoc(title: string, subtitle?: string) {
+export function newReportDoc(title: string, subtitle?: string, brandName = 'System_2F') {
   const doc = new jsPDF({ orientation: 'landscape' })
   doc.setFillColor(DARK)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')
   doc.setTextColor('#FFFFFF')
   doc.setFontSize(14)
-  doc.text('SAP Project Governance Platform', 10, 14)
+  doc.text(brandName, 10, 14)
 
   doc.setTextColor('#111111')
   doc.setFontSize(16)
@@ -21,6 +21,27 @@ export function newReportDoc(title: string, subtitle?: string) {
     doc.text(subtitle, 10, 39)
   }
   return doc
+}
+
+// Adiciona uma nova página ao doc já existente, com o mesmo cabeçalho de
+// marca — usado para relatórios com uma página por projeto (ex: status
+// report semanal), tudo num único PDF.
+export function addReportPage(doc: jsPDF, title: string, subtitle?: string, brandName = 'System_2F') {
+  doc.addPage()
+  doc.setFillColor(DARK)
+  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')
+  doc.setTextColor('#FFFFFF')
+  doc.setFontSize(14)
+  doc.text(brandName, 10, 14)
+
+  doc.setTextColor('#111111')
+  doc.setFontSize(16)
+  doc.text(title, 10, 32)
+  if (subtitle) {
+    doc.setFontSize(10)
+    doc.setTextColor('#555555')
+    doc.text(subtitle, 10, 39)
+  }
 }
 
 export function addReportTable(

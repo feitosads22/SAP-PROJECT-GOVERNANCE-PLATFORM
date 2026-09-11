@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
         role: role ?? 'consultant',
         organization_id: callerProfile.organization_id,
       },
+      // Para onde o link do e-mail leva depois que a pessoa define a senha.
+      // Troque pela URL de produção real se for diferente.
+      redirectTo: 'https://sap-project-governance-platform.vercel.app/login',
     })
     if (error) return json({ error: error.message }, 400)
 

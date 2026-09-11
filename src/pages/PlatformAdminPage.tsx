@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { getOrganizations, getAllProjectsOrgIds, getAllProfilesOrgIds, createOrganization } from '../lib/platformAdmin'
 import type { OrganizationRow } from '../lib/platformAdmin'
 import { toast } from '../components/Toast'
@@ -15,6 +16,11 @@ export default function PlatformAdminPage() {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [sapClient, setSapClient] = useState('')
+  // convidar admin para uma organização específica
+  const [invitingOrg, setInvitingOrg] = useState<string | null>(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName,  setInviteName]  = useState('')
+  const [inviting,    setInviting]    = useState(false)
 
   async function load() {
     setLoading(true)
@@ -46,6 +52,26 @@ export default function PlatformAdminPage() {
     if (error) toast(error.message, 'error')
     else { toast('Organização criada!', 'ok'); setName(''); setSlug(''); setSapClient(''); setShowForm(false); void load() }
     setSaving(false)
+  }
+
+  async function handleInviteAdmin(e: React.FormEvent, orgId: string) {
+    e.preventDefault()
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const { error } = await supabase.functions.invoke('invite-user', {
+        body: { email: inviteEmail.trim().toLowerCase(), full_name: inviteName.trim() || null, role: 'admin', organization_id: orgId },
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      })
+      if (error) throw error
+      toast('Convite enviado!', 'ok')
+      setInvitingOrg(null); setInviteEmail(''); setInviteName('')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Erro ao convidar.', 'error')
+    } finally {
+      setInviting(false)
+    }
   }
 
   const totalProjects = Object.values(projCounts).reduce((s, n) => s + n, 0)
@@ -105,9 +131,8 @@ export default function PlatformAdminPage() {
                   </div>
                 </div>
                 <p style={{ fontSize: '.8125rem', color: 'var(--subtle)', marginBottom: '.75rem' }}>
-                  Isso cria só a organização (o "tenant"). Pra dar acesso a alguém como admin dessa organização,
-                  ainda é preciso criar o perfil dela vinculado a este ID manualmente (via SQL) — convite direto
-                  entre organizações ainda não tem tela própria.
+                  Depois de criada, use "Convidar admin" na linha da organização para enviar o primeiro
+                  acesso (por e-mail) a essa organização.
                 </p>
                 <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
                   <button type="button" className="btn-secondary btn-sm" onClick={() => setShowForm(false)}>Cancelar</button>
@@ -131,18 +156,38 @@ export default function PlatformAdminPage() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Cliente</th><th>Slug</th><th>Nº SAP</th><th>Projetos</th><th>Usuários</th><th>Criada em</th></tr>
+                <tr><th>Cliente</th><th>Slug</th><th>Nº SAP</th><th>Projetos</th><th>Usuários</th><th>Criada em</th><th>Ações</th></tr>
               </thead>
               <tbody>
                 {orgs.map(o => (
-                  <tr key={o.id}>
-                    <td style={{ fontWeight: 600 }}>{o.name}</td>
-                    <td><span className="badge">{o.slug}</span></td>
-                    <td>{o.sap_client_number ?? '—'}</td>
-                    <td>{projCounts[o.id] ?? 0}</td>
-                    <td>{userCounts[o.id] ?? 0}</td>
-                    <td style={{ fontSize: '.8125rem', color: 'var(--subtle)' }}>{new Date(o.created_at).toLocaleDateString('pt-BR')}</td>
-                  </tr>
+                  <>
+                    <tr key={o.id}>
+                      <td style={{ fontWeight: 600 }}>{o.name}</td>
+                      <td><span className="badge">{o.slug}</span></td>
+                      <td>{o.sap_client_number ?? '—'}</td>
+                      <td>{projCounts[o.id] ?? 0}</td>
+                      <td>{userCounts[o.id] ?? 0}</td>
+                      <td style={{ fontSize: '.8125rem', color: 'var(--subtle)' }}>{new Date(o.created_at).toLocaleDateString('pt-BR')}</td>
+                      <td>
+                        <button className="btn-ghost btn-sm" onClick={() => { setInvitingOrg(invitingOrg === o.id ? null : o.id); setInviteEmail(''); setInviteName('') }}>
+                          {invitingOrg === o.id ? '✕ Cancelar' : '+ Convidar admin'}
+                        </button>
+                      </td>
+                    </tr>
+                    {invitingOrg === o.id && (
+                      <tr key={`${o.id}-invite`}>
+                        <td colSpan={7} style={{ background: 'var(--surface-2)', padding: '.75rem 1rem' }}>
+                          <form onSubmit={e => handleInviteAdmin(e, o.id)} style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required autoFocus
+                              placeholder="e-mail do admin" style={{ fontSize: '.8125rem', flex: '1 1 200px' }} />
+                            <input value={inviteName} onChange={e => setInviteName(e.target.value)}
+                              placeholder="Nome completo (opcional)" style={{ fontSize: '.8125rem', flex: '1 1 200px' }} />
+                            <button type="submit" className="btn-sm" disabled={inviting}>{inviting ? 'Enviando…' : '✓ Enviar convite'}</button>
+                          </form>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>

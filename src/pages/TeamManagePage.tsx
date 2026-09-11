@@ -71,29 +71,34 @@ export default function TeamManagePage({ role: userRole }: Props) {
     e.preventDefault()
     if (!email.trim()) return
     setSaving(true); setErro(null)
-    // Verifica se já existe perfil com esse email
-    const { data: existing } = await sb.from('profiles')
-      .select('id').eq('email', email.trim().toLowerCase()).maybeSingle()
-    if (existing) {
-      // Já tem perfil (ex: já aceitou um convite antes) — só atualiza o cargo
-      const { error } = await sb.from('profiles').update({ role: newRole })
-        .eq('id', existing.id)
-      if (error) throw error
-    } else {
-      // Não existe perfil ainda: NÃO dá pra inserir manualmente (RLS só permite
-      // auto-inserção). O perfil é criado pelo trigger handle_new_user() quando
-      // a pessoa aceita o convite — a Edge Function já manda organization_id/role
-      // nos metadados para ela entrar direto na organização certa.
-      const { data: { session } } = await supabase.auth.getSession()
-      const { error: inviteErr } = await supabase.functions.invoke('invite-user', {
-        body: { email: email.trim().toLowerCase(), full_name: fullName.trim() || null, role: newRole },
-        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-      })
-      if (inviteErr) throw inviteErr
+    try {
+      // Verifica se já existe perfil com esse email
+      const { data: existing } = await sb.from('profiles')
+        .select('id').eq('email', email.trim().toLowerCase()).maybeSingle()
+      if (existing) {
+        // Já tem perfil (ex: já aceitou um convite antes) — só atualiza o cargo
+        const { error } = await sb.from('profiles').update({ role: newRole })
+          .eq('id', existing.id)
+        if (error) throw error
+      } else {
+        // Não existe perfil ainda: NÃO dá pra inserir manualmente (RLS só permite
+        // auto-inserção). O perfil é criado pelo trigger handle_new_user() quando
+        // a pessoa aceita o convite — a Edge Function já manda organization_id/role
+        // nos metadados para ela entrar direto na organização certa.
+        const { data: { session } } = await supabase.auth.getSession()
+        const { error: inviteErr } = await supabase.functions.invoke('invite-user', {
+          body: { email: email.trim().toLowerCase(), full_name: fullName.trim() || null, role: newRole },
+          headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        })
+        if (inviteErr) throw inviteErr
+      }
+      setEmail(''); setFullName(''); setNewRole('consultant')
+      setShowForm(false); void loadAll()
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Erro ao adicionar usuário.')
+    } finally {
+      setSaving(false)
     }
-    setEmail(''); setFullName(''); setNewRole('consultant')
-    setShowForm(false); void loadAll()
-    setSaving(false)
   }
 
   async function changeRole(memberId: string, newR: string) {

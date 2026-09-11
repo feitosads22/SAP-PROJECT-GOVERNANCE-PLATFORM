@@ -22,6 +22,7 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
   const [priority,   setPriority]   = useState(task.priority ?? 'medium')
   const [sapPhase,   setSapPhase]   = useState(task.sap_activate_phase ?? '')
   const [sapModule,  setSapModule]  = useState('')
+  const [frente,     setFrente]     = useState(task.frente ?? '')
   const [startDate,  setStartDate]  = useState(task.start_date ?? '')
   const [dueDate,    setDueDate]    = useState(task.due_date ?? '')
   const [estHours,   setEstHours]   = useState(String(task.estimated_hours ?? ''))
@@ -39,6 +40,7 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
       title:              title.trim(),
       status, priority,
       sap_activate_phase: sapPhase  || null,
+      frente:             frente.trim() || null,
       start_date:         startDate || null,
       due_date:           dueDate   || null,
       estimated_hours:    estHours  ? Number(estHours) : null,
@@ -92,6 +94,10 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
                   <option value="">— Nenhuma —</option>
                   {SAP_PHASES.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
+              </div>
+              <div className="form-group">
+                <label>Frente / Bloco</label>
+                <input value={frente} onChange={e => setFrente(e.target.value)} placeholder="Ex: Governança, Basis/Cloud…" />
               </div>
               <div className="form-group">
                 <label>Módulo SAP</label>

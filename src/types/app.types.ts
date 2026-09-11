@@ -5,6 +5,7 @@ export type Task = Database['public']['Tables']['tasks']['Row'] & {
   due_date?: string | null
   progress?: number
   description?: string | null
+  frente?: string | null
 }
 export type Project = Database['public']['Tables']['projects']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']

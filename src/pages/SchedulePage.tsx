@@ -5,13 +5,40 @@ import { toast } from '../components/Toast'
 
 type Milestone = {
   id: string; name: string; description: string | null
-  due_date: string; status: string
+  due_date: string; status: string; criticality: string | null
 }
 type Task = {
   id: string; title: string; status: string; priority: string
   start_date: string | null; due_date: string | null
   sap_activate_phase: string | null; estimated_hours: number | null
-  progress: number
+  progress: number; frente: string | null
+}
+
+const CRIT_LABEL: Record<string, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta', critica: 'Crítica' }
+const CRIT_COLOR: Record<string, string> = { baixa: '#94A3B8', media: '#F59E0B', alta: '#EF4444', critica: '#7C3AED' }
+
+// % Planejado: com base no tempo já decorrido entre início e fim planejados.
+function plannedPct(task: Task, today: Date): number | null {
+  if (!task.start_date || !task.due_date) return null
+  const start = new Date(task.start_date).getTime()
+  const end = new Date(task.due_date).getTime()
+  if (end <= start) return today.getTime() >= end ? 100 : 0
+  const now = today.getTime()
+  if (now <= start) return 0
+  if (now >= end) return 100
+  return Math.round(((now - start) / (end - start)) * 100)
+}
+
+// SPI (Schedule Performance Index) — % realizado / % planejado, como no EVM.
+function spiOf(task: Task, planned: number | null): number | null {
+  if (planned == null || planned === 0) return null
+  return Math.round((task.progress / planned) * 100) / 100
+}
+function spiColor(spi: number | null): string {
+  if (spi == null) return 'var(--subtle)'
+  if (spi >= 1) return 'var(--ok)'
+  if (spi >= 0.8) return 'var(--warn)'
+  return 'var(--danger)'
 }
 
 const SAP_COLOR: Record<string,string> = {
@@ -40,6 +67,7 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
   const [milName,    setMilName]    = useState('')
   const [milDate,    setMilDate]    = useState('')
   const [milDesc,    setMilDesc]    = useState('')
+  const [milCrit,    setMilCrit]    = useState('media')
   const [savingMil,  setSavingMil]  = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
@@ -51,7 +79,7 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
     const [rM, rT] = await Promise.all([
       sb.from('milestones').select('*').eq('project_id', projectId).order('due_date'),
       sb.from('tasks')
-        .select('id,title,status,priority,start_date,due_date,sap_activate_phase,estimated_hours,progress')
+        .select('id,title,status,priority,start_date,due_date,sap_activate_phase,estimated_hours,progress,frente')
         .eq('project_id', projectId).order('due_date', { ascending: true }),
     ])
     if (!rM.error) setMilestones(rM.data ?? [])
@@ -68,9 +96,10 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
     const { error } = await sb.from('milestones').insert({
       project_id: projectId, name: milName.trim(),
       description: milDesc.trim() || null, due_date: milDate, status: 'not_started',
+      criticality: milCrit,
     })
     if (error) { toast(error.message, 'error') }
-    else { toast('Marco criado!', 'ok'); setMilName(''); setMilDate(''); setMilDesc(''); setShowMilForm(false); void load() }
+    else { toast('Marco criado!', 'ok'); setMilName(''); setMilDate(''); setMilDesc(''); setMilCrit('media'); setShowMilForm(false); void load() }
     setSavingMil(false)
   }
 
@@ -138,6 +167,12 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
             <label>Descrição</label>
             <input value={milDesc} onChange={e=>setMilDesc(e.target.value)} placeholder="Opcional" />
           </div>
+          <div style={{ flex:1, minWidth:120 }}>
+            <label>Criticidade</label>
+            <select value={milCrit} onChange={e=>setMilCrit(e.target.value)}>
+              {Object.entries(CRIT_LABEL).map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
           <div style={{ display:'flex', gap:'.5rem' }}>
             <button type="button" className="btn-secondary btn-sm" onClick={()=>setShowMilForm(false)}>Cancelar</button>
             <button type="submit" disabled={savingMil}>{savingMil?'…':'✓ Criar'}</button>
@@ -179,7 +214,14 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
                     <div style={{ padding:'.5rem .875rem', display:'flex', alignItems:'center', gap:'.375rem', background:'var(--surface)' }}>
                       <span>🔷</span>
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontWeight:700, fontSize:'.8125rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:over?'var(--danger)':'var(--text)' }}>{m.name}</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:'.25rem' }}>
+                          <div style={{ fontWeight:700, fontSize:'.8125rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:over?'var(--danger)':'var(--text)' }}>{m.name}</div>
+                          {m.criticality && (
+                            <span className="badge" style={{ fontSize:'.5rem', padding:'.05rem .3rem', background:(CRIT_COLOR[m.criticality]??'#94A3B8')+'22', color:CRIT_COLOR[m.criticality]??'#94A3B8', flexShrink:0 }}>
+                              {CRIT_LABEL[m.criticality]??m.criticality}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize:'.5625rem', color:'var(--subtle)' }}>{d.toLocaleDateString('pt-BR')} · {MIL_STATUS[m.status]??m.status}</div>
                       </div>
                       {canEdit && <button className="btn-ghost btn-sm" onClick={()=>deleteMilestone(m.id)} style={{ marginLeft:'auto', fontSize:'.5625rem', padding:'.1rem .3rem', opacity:.5 }}>✕</button>}
@@ -216,7 +258,10 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
                             <div style={{ width:7, height:7, borderRadius:'50%', background:TASK_COLOR[task.status]??'#94A3B8', flexShrink:0 }}/>
                             <div style={{ minWidth:0 }}>
                               <div style={{ fontSize:'.8125rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:over?'var(--danger)':'var(--text)' }}>{task.title}</div>
-                              {task.estimated_hours && <div style={{ fontSize:'.5625rem', color:'var(--subtle)' }}>{task.estimated_hours}h</div>}
+                              <div style={{ fontSize:'.5625rem', color:'var(--subtle)', display:'flex', gap:'.25rem', alignItems:'center' }}>
+                                {task.frente && <span style={{ fontWeight:700 }}>{task.frente}</span>}
+                                {task.estimated_hours ? <span>{task.estimated_hours}h</span> : null}
+                              </div>
                             </div>
                           </div>
                           <div style={{ position:'relative', height:40, background:'var(--surface)' }}>
@@ -264,27 +309,34 @@ export default function SchedulePage({ projectId: propId, role }: Props) {
       ) : (
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Item</th><th>Tipo</th><th>Fase</th><th>Status</th><th>Início</th><th>Fim</th><th>%</th></tr></thead>
+            <thead><tr><th>Item</th><th>Tipo</th><th>Fase</th><th>Frente</th><th>Status</th><th>Início</th><th>Fim</th><th>% Real.</th><th>% Plan.</th><th>SPI</th></tr></thead>
             <tbody>
               {milestones.map(m=>(
                 <tr key={m.id} style={{ background:'var(--surface-2)' }}>
                   <td><div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}><span>🔷</span><b>{m.name}</b></div></td>
                   <td><span className="badge">Marco</span></td><td>—</td>
+                  <td>{m.criticality ? <span className="badge" style={{ background:(CRIT_COLOR[m.criticality]??'#94A3B8')+'22', color:CRIT_COLOR[m.criticality]??'#94A3B8' }}>{CRIT_LABEL[m.criticality]??m.criticality}</span> : '—'}</td>
                   <td><span className="badge">{MIL_STATUS[m.status]??m.status}</span></td><td>—</td>
-                  <td style={{ color:new Date(m.due_date)<today?'var(--danger)':'var(--text)' }}>{new Date(m.due_date).toLocaleDateString('pt-BR')}</td><td>—</td>
+                  <td style={{ color:new Date(m.due_date)<today?'var(--danger)':'var(--text)' }}>{new Date(m.due_date).toLocaleDateString('pt-BR')}</td><td>—</td><td>—</td><td>—</td>
                 </tr>
               ))}
-              {filtered.map(t=>(
+              {filtered.map(t=>{
+                const planned = plannedPct(t, today)
+                const spi = spiOf(t, planned)
+                return (
                 <tr key={t.id}>
                   <td style={{ fontSize:'.875rem' }}>{t.title}</td>
                   <td><span className="badge">Tarefa</span></td>
                   <td>{t.sap_activate_phase?<span className="badge" style={{ background:(SAP_COLOR[t.sap_activate_phase]??'#94A3B8')+'22', color:SAP_COLOR[t.sap_activate_phase]??'#94A3B8' }}>{t.sap_activate_phase}</span>:'—'}</td>
+                  <td style={{ fontSize:'.8125rem' }}>{t.frente ?? '—'}</td>
                   <td><span className="badge" style={{ background:(TASK_COLOR[t.status]??'#94A3B8')+'22', color:TASK_COLOR[t.status]??'#94A3B8' }}>{t.status.replace(/_/g,' ')}</span></td>
                   <td style={{ fontSize:'.8125rem', color:'var(--subtle)' }}>{t.start_date?new Date(t.start_date).toLocaleDateString('pt-BR'):'—'}</td>
                   <td style={{ fontSize:'.8125rem', color:t.due_date&&new Date(t.due_date)<today&&t.status!=='completed'?'var(--danger)':'var(--text-2)' }}>{t.due_date?new Date(t.due_date).toLocaleDateString('pt-BR'):'—'}</td>
                   <td style={{ fontSize:'.8125rem' }}>{t.progress>0?t.progress+'%':'—'}</td>
+                  <td style={{ fontSize:'.8125rem' }}>{planned!=null?planned+'%':'—'}</td>
+                  <td style={{ fontSize:'.8125rem', fontWeight:700, color:spiColor(spi) }}>{spi!=null?spi.toFixed(2):'—'}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

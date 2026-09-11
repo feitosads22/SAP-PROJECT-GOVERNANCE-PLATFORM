@@ -46,6 +46,7 @@ export default function CreateTaskModal({
   const [moduleId,         setModuleId]         = useState('')
   const [phaseId,          ] = useState('')  // kept for phase_id in insert
   const [sapPhase,         setSapPhase]         = useState('')
+  const [frente,           setFrente]           = useState('')
   const [startDate,        setStartDate]        = useState('')
   const [endDate,          setEndDate]          = useState('')
   const [estimatedHours,   setEstimatedHours]   = useState('')
@@ -74,7 +75,7 @@ export default function CreateTaskModal({
     if (!projectId)    { setErro('Selecione um projeto.'); return }
     setSaving(true); setErro(null)
 
-    const payload: Database['public']['Tables']['tasks']['Insert'] = {
+    const payload: Database['public']['Tables']['tasks']['Insert'] & { frente?: string } = {
       project_id: projectId, organization_id: organizationId,
       title: title.trim(), description: description || undefined,
       priority,
@@ -83,6 +84,7 @@ export default function CreateTaskModal({
       module_id:          moduleId        || undefined,
       phase_id:           phaseId         || undefined,
       sap_activate_phase: sapPhase        || undefined,
+      frente:             frente.trim()   || undefined,
       planned_start_date: startDate       || undefined,
       planned_end_date:   endDate         || undefined,
       estimated_hours:    estimatedHours ? parseFloat(estimatedHours) : undefined,
@@ -145,6 +147,11 @@ export default function CreateTaskModal({
                 <option value="">— Nenhuma —</option>
                 {SAP_PHASES.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
+            </div>
+
+            <div>
+              <label>Frente / Bloco</label>
+              <input value={frente} onChange={e => setFrente(e.target.value)} placeholder="Ex: Governança, Basis/Cloud, TAX/Fiscal…" />
             </div>
 
             <div>

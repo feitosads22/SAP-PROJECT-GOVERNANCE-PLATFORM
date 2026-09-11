@@ -41,6 +41,10 @@ export default function TeamManagePage({ role: userRole }: Props) {
   const [fullName, setFullName] = useState('')
   const [newRole,  setNewRole]  = useState('consultant')
   const [saving,   setSaving]   = useState(false)
+  // editar usuário existente
+  const [editingId,   setEditingId]   = useState<string | null>(null)
+  const [editName,    setEditName]    = useState('')
+  const [editSaving,  setEditSaving]  = useState(false)
   // form alocar membro
   const [showAlloc,   setShowAlloc]   = useState(false)
   const [allocProject,setAllocProject]= useState('')
@@ -99,6 +103,19 @@ export default function TeamManagePage({ role: userRole }: Props) {
     } finally {
       setSaving(false)
     }
+  }
+
+  function startEdit(m: Profile) {
+    setEditingId(m.id)
+    setEditName(m.full_name ?? '')
+  }
+
+  async function saveEdit(memberId: string) {
+    setEditSaving(true)
+    const { error } = await sb.from('profiles').update({ full_name: editName.trim() || null }).eq('id', memberId)
+    if (error) setErro(error.message)
+    else { setEditingId(null); void loadAll() }
+    setEditSaving(false)
   }
 
   async function changeRole(memberId: string, newR: string) {
@@ -271,12 +288,28 @@ export default function TeamManagePage({ role: userRole }: Props) {
                                   <div style={{ width:32, height:32, borderRadius:'50%', background: ROLE_COLOR[m.role]+'22', color: ROLE_COLOR[m.role], display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'.75rem', flexShrink:0 }}>
                                     {(m.full_name?.[0] ?? m.email?.[0] ?? '?').toUpperCase()}
                                   </div>
-                                  <div>
-                                    <div style={{ fontWeight:600, fontSize:'.875rem' }}>{m.full_name ?? '—'}</div>
-                                    {m.id === profile?.id && (
-                                      <span className="badge badge--brand" style={{ fontSize:'.5625rem' }}>Você</span>
-                                    )}
-                                  </div>
+                                  {editingId === m.id ? (
+                                    <div style={{ display:'flex', gap:'.375rem', alignItems:'center' }}>
+                                      <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
+                                        style={{ fontSize:'.8125rem', padding:'.25rem .5rem', width:160 }}
+                                        onKeyDown={e => { if (e.key === 'Enter') void saveEdit(m.id); if (e.key === 'Escape') setEditingId(null) }} />
+                                      <button className="btn-sm" disabled={editSaving} onClick={() => saveEdit(m.id)}>{editSaving ? '…' : '✓'}</button>
+                                      <button className="btn-ghost btn-sm" onClick={() => setEditingId(null)}>✕</button>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <div style={{ display:'flex', alignItems:'center', gap:'.375rem' }}>
+                                        <span style={{ fontWeight:600, fontSize:'.875rem' }}>{m.full_name ?? '—'}</span>
+                                        {canManage && (
+                                          <button className="btn-ghost btn-sm" title="Editar nome" style={{ padding:0, fontSize:'.6875rem' }}
+                                            onClick={() => startEdit(m)}>✏️</button>
+                                        )}
+                                      </div>
+                                      {m.id === profile?.id && (
+                                        <span className="badge badge--brand" style={{ fontSize:'.5625rem' }}>Você</span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                               <td style={{ fontSize:'.8125rem', color:'var(--subtle)' }}>{m.email}</td>

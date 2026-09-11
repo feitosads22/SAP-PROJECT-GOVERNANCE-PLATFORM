@@ -54,7 +54,7 @@ function timeAgo(date: string) {
 const MONTH_ABBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 export default function Dashboard() {
-  const { profile } = useAuth()
+  const { profile, organization } = useAuth()
   const navigate = useNavigate()
   const [portfolio,   setPortfolio]   = useState<PortfolioRow[]>([])
   const [projects,    setProjects]    = useState<Project[]>([])
@@ -176,9 +176,13 @@ export default function Dashboard() {
           <div className="dash-hero__eyebrow">
             BEM-VINDO, {profile?.full_name?.split(' ')[0]?.toUpperCase() ?? 'USUÁRIO'}
           </div>
-          <div className="dash-hero__title">Governança de Projetos SAP</div>
+          <div className="dash-hero__title">
+            {organization?.name ? `Governança de Projetos SAP — ${organization.name}` : 'Governança de Projetos SAP'}
+          </div>
           <div className="dash-hero__sub">
-            Acompanhe, gerencie e entregue valor com mais previsibilidade.
+            {organization?.name
+              ? `Acompanhe os projetos SAP da ${organization.name} com mais previsibilidade.`
+              : 'Acompanhe, gerencie e entregue valor com mais previsibilidade.'}
           </div>
         </div>
         <div className="dash-hero__actions">

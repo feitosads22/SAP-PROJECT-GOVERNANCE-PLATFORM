@@ -1,0 +1,13 @@
+-- Marca fictícia de cada organização de demonstração (logos SVG embutidos como data URI)
+
+update public.organizations
+set primary_color = '#1B4F72',
+    logo_url = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxQjRGNzIiLz48cGF0aCBkPSJNMTYgMTggTDMyIDQ2IEw0OCAxOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjMyIiBjeT0iMTMiIHI9IjQiIGZpbGw9IiM1REFERTIiLz48L3N2Zz4K'
+where id = '11111111-1111-1111-1111-111111111111'; -- Vantus Consultoria SAP
+
+update public.organizations
+set primary_color = '#7C3A6D',
+    logo_url = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMzRDFGMzgiLz48cG9seWdvbiBwb2ludHM9IjMyLDEzIDUxLDQ3IDEzLDQ3IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxsaW5lIHgxPSIzMiIgeTE9IjEzIiB4Mj0iMzIiIHkyPSI0NyIgc3Ryb2tlPSIjRThBNkQ0IiBzdHJva2Utd2lkdGg9IjMiLz48bGluZSB4MT0iMjEuNSIgeTE9IjMwIiB4Mj0iNDIuNSIgeTI9IjMwIiBzdHJva2U9IiNFOEE2RDQiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPgo='
+where id = '22222222-2222-2222-2222-222222222222'; -- Prisma Sistemas Empresariais Ltda.
+
+select name, primary_color, (logo_url is not null) as tem_logo from public.organizations order by created_at;

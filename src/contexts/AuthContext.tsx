@@ -4,9 +4,17 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
 
+export type OrgBranding = {
+  id: string
+  name: string
+  logo_url: string | null
+  primary_color: string | null
+}
+
 type AuthState = {
   session: Session | null
   profile: Profile | null
+  organization: OrgBranding | null
   loading: boolean
   refreshProfile: () => Promise<void>
   signOut: () => Promise<void>
@@ -17,6 +25,8 @@ const AuthContext = createContext<AuthState | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [organization, setOrganization] = useState<OrgBranding | null>(null)
+
   const [loading, setLoading] = useState(true)
 
   async function loadProfile(userId: string) {
@@ -30,9 +40,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.error('Falha ao carregar profile:', error.message)
       setProfile(null)
+      setOrganization(null)
       return
     }
-    setProfile(data)
+    const p = data as Profile | null
+    setProfile(p)
+
+    if (p?.organization_id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: org } = await (supabase as any)
+        .from('organizations')
+        .select('id, name, logo_url, primary_color')
+        .eq('id', p.organization_id)
+        .maybeSingle()
+      setOrganization(org ?? null)
+    } else {
+      setOrganization(null)
+    }
   }
 
   useEffect(() => {
@@ -51,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadProfile(novaSessao.user.id)
       } else {
         setProfile(null)
+        setOrganization(null)
       }
       setLoading(false)
     })
@@ -64,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     session,
     profile,
+    organization,
     loading,
     refreshProfile: async () => {
       if (session) await loadProfile(session.user.id)

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { configuracaoOk } from './lib/supabase'
@@ -50,8 +50,17 @@ function ErroConfiguracao() {
 }
 
 function AppLayout() {
-  const { session, profile, loading } = useAuth()
+  const { session, profile, organization, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // White-label leve: a cor de marca do cliente sobrepõe --brand no app inteiro.
+  // Sem cor definida, volta pro azul padrão da plataforma.
+  useEffect(() => {
+    const root = document.documentElement
+    if (organization?.primary_color) root.style.setProperty('--brand', organization.primary_color)
+    else root.style.removeProperty('--brand')
+    return () => { root.style.removeProperty('--brand') }
+  }, [organization?.primary_color])
 
   if (loading) return (
     <div className="tela-centro"><p className="sutil">Carregando…</p></div>

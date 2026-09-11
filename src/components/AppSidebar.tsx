@@ -33,7 +33,7 @@ const NAV = [
 
 export default function AppSidebar({ open, onClose }: Props) {
   const { pathname } = useLocation()
-  const { profile }  = useAuth()
+  const { profile, organization } = useAuth()
   const role = profile?.role ?? ''
 
   const isActive = (to: string) =>
@@ -44,10 +44,14 @@ export default function AppSidebar({ open, onClose }: Props) {
       {open && <div className="sidebar-overlay" onClick={onClose} />}
       <aside className={`sidebar${open ? ' sidebar--open' : ''}`}>
         <div className="sidebar__brand">
-          <div className="sidebar__brand-icon">⬡</div>
+          {organization?.logo_url ? (
+            <img src={organization.logo_url} alt={organization.name} className="sidebar__brand-icon" style={{ objectFit: 'cover' }} />
+          ) : (
+            <div className="sidebar__brand-icon">⬡</div>
+          )}
           <div>
-            <div className="sidebar__brand-name">SAP Governance</div>
-            <div className="sidebar__brand-sub">Gestão de Projetos SAP</div>
+            <div className="sidebar__brand-name">{organization?.name ?? 'SAP Governance'}</div>
+            <div className="sidebar__brand-sub">{organization ? 'Gestão de Projetos SAP · System_2F' : 'Gestão de Projetos SAP'}</div>
           </div>
         </div>
 
@@ -73,7 +77,7 @@ export default function AppSidebar({ open, onClose }: Props) {
         </nav>
 
         <div className="sidebar__footer">
-          <div className="sidebar__footer-name">SAP Governance</div>
+          <div className="sidebar__footer-name">{organization?.name ?? 'SAP Governance'}</div>
           <div className="sidebar__footer-tagline">Melhores decisões,{'\n'}melhores resultados.</div>
         </div>
       </aside>
